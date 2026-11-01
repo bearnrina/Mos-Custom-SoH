@@ -1824,7 +1824,7 @@ void SohMenu::AddMenuEnhancements() {
             "Adjusts how fast regular enemies and minibosses move and act. 1.00x is vanilla speed; 2.00x is double speed."));
     AddWidget(path, "Enemy Health", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("MoEnemyHealthPercent"))
-        .Options(ComboboxOptions().ComboMap(moEnemyHealthChoices).DefaultIndex(1).Tooltip(
+        .Options(ComboboxOptions().ComboMap(moEnemyHealthChoices).DefaultIndex(100).Tooltip(
             "Adjusts starting health of ordinary enemies. 100% is vanilla. "
             "Bosses, minibosses, and special scripted enemies are excluded. "
             "Changes apply to newly initialized enemies only."));

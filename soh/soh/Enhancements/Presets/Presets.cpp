@@ -1,5 +1,7 @@
 #include "Presets.h"
+#include "MoPresetsData.h"
 #include <string>
+#include <algorithm>
 #include <fstream>
 #include <spdlog/common.h>
 #include <ship/config/Config.h>
@@ -55,6 +57,7 @@ struct PresetInfo {
     std::string fileName;
     bool apply[PRESET_SECTION_MAX];
     bool isBuiltIn = false;
+    bool isMoCurated = false;
 };
 
 struct BlockInfo {
@@ -276,6 +279,20 @@ void LoadPresets() {
         std::string fileName = filePath.substr(start, filePath.size() - start - 5); // 5 for length of ".json"
         ParsePreset(json->Data, fileName);
     }
+    // Register the curated presets after user and upstream archive presets.
+    // They are embedded in this build, protected from in-menu edits/deletion,
+    // and remain independent of the user's writable presets directory.
+    for (const char* presetJson : MoCuratedPresets::kJson) {
+        try {
+            auto json = nlohmann::json::parse(presetJson);
+            std::string name = json.at("presetName").get<std::string>();
+            ParsePreset(json, name);
+            presets[name].isBuiltIn = true;
+            presets[name].isMoCurated = true;
+        } catch (const std::exception& e) {
+            spdlog::error("Failed to load a Mo curated preset: {}", e.what());
+        }
+    }
 }
 
 void SavePreset(std::string& presetName) {
@@ -429,9 +446,13 @@ void PresetsCustomWidget(WidgetInfo& info) {
         DrawEditPresetPopup();
     }
     ImGui::SameLine();
-    UIWidgets::CVarCheckbox("Hide built-in presets", CVAR_GENERAL("HideBuiltInPresets"),
+    UIWidgets::CVarCheckbox("Hide Mo's presets", CVAR_GENERAL("HideMoPresets"),
+                            UIWidgets::CheckboxOptions().Color(THEME_COLOR));
+    ImGui::SameLine();
+    UIWidgets::CVarCheckbox("Hide SoH presets", CVAR_GENERAL("HideBuiltInPresets"),
                             UIWidgets::CheckboxOptions().Color(THEME_COLOR));
     bool hideBuiltIn = CVarGetInteger(CVAR_GENERAL("HideBuiltInPresets"), 0);
+    bool hideMo = CVarGetInteger(CVAR_GENERAL("HideMoPresets"), 0);
     UIWidgets::PushStyleTabs(THEME_COLOR);
     if (ImGui::BeginTable("PresetWidgetTable", PRESET_SECTION_MAX + 4)) {
         ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 400);
@@ -464,8 +485,38 @@ void PresetsCustomWidget(WidgetInfo& info) {
             ImGui::PopFont();
             return;
         }
-        for (auto& [name, info] : presets) {
-            if (hideBuiltIn && info.isBuiltIn) {
+        // Pin Mo's three curated presets above the alphabetically ordered remainder.
+        // This changes display order only; preset storage and application are untouched.
+        std::vector<decltype(presets)::iterator> orderedPresets;
+        orderedPresets.reserve(presets.size());
+        for (auto it = presets.begin(); it != presets.end(); ++it) {
+            orderedPresets.push_back(it);
+        }
+        const auto moPriority = [](const auto& entry) {
+            if (!entry->second.isMoCurated) {
+                return 3;
+            }
+            const auto& name = entry->first;
+            if (name.starts_with("Mo's Nostalgia+")) {
+                return 1;
+            }
+            if (name.starts_with("Mo's Vanilla+")) {
+                return 2;
+            }
+            if (name.starts_with("Mo's OG+")) {
+                return 0;
+            }
+            return 3;
+        };
+        std::sort(orderedPresets.begin(), orderedPresets.end(), [&](const auto& a, const auto& b) {
+            const int priorityA = moPriority(a);
+            const int priorityB = moPriority(b);
+            return priorityA != priorityB ? priorityA < priorityB : a->first < b->first;
+        });
+
+        for (auto presetIt : orderedPresets) {
+            auto& [name, info] = *presetIt;
+            if ((info.isMoCurated && hideMo) || (!info.isMoCurated && info.isBuiltIn && hideBuiltIn)) {
                 continue;
             }
             ImGui::TableNextRow();

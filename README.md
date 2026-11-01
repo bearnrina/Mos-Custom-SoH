@@ -77,9 +77,88 @@ These assets remain the work of their original creators. Inclusion does not impl
 
 Retain all existing copyright notices, license files, and attribution documents from upstream and third-party components. See [upstream credits](docs/CREDITS.md).
 
-## Project scope
+## Planned features
+PLANNED FEATURES V 1.1
+Adjustable drop percentage- enhancements- difficulty- drops
+Adjustable hover boot duration & slide
+Adjustable iron boots run/sink speed
+Assign equipment to d-pad
+Make speed modifier affect climbing and block pushing
+Make quick swimming faster
+Add 'give all' option to general, equipment, quest items, & dungeon items in save editor
+Stone of agony allows talking to gossip stones
+Quick plant magic beans
+Clock on pause menu
+Void fall causes instant death
+Add deku nut tree drops
+Fix random enemy sizes
+Adjustable bunny hood speed
+Add night only option to gaurd vision
+Condense all menu text and pop-up text
+Skippable cutscenes
 
-GREGFORCE Quest is being developed separately and is **not part of this v1.0 release**. Future feature ideas and changes are not guarantees of inclusion.
+PLANNED FEATURES V 1.2 and beyond
+Map Mania- Buyable maps- all 34 regions maps are buyable
+Compassanity- Stone of agony functions as map compass (all in-game compasses are replaced by perishable items)
+Adjustable enemy drop rate/selection
+Adjustable enemy detection range
+Adjustable grass/pot/etc drop rate/selection
+Add hint options from randomizer
+Dash strike attack
+Change Jabu Jabu's exterior hit sound from stone to flesh
+Universal day/night cycle
+Fish anywhere (turns off bottle catches)
+Improve horse mechanics
+Restore lake hylia and zoras domain after water temple
+Gaurds patrol hyrule castle field
+Slot Skins- toggle between multiple alternate assets for items, weapons & equipment in start menu
+
+SHUFFLE MODE (enhancements - extra modes)
+Items
+Local Dungeon Item Shuffle- shuffle all items within a given dungeon
+Global Dungeon Item Shuffle- shuffle all c-items between dungeons
+Combine Compass/Map- combine the map/compass pickup into one, thus freeing a chest
+World Item Shuffle- shuffle all items world items (no dungeons, grottos, etc.)
+-
+Enemies
+Local Dungeon Enemy Shuffle
+Global Dungeon Enemy Shuffle
+World Enemy Shuffle
+Boss Shuffle
+-
+Dungeons
+Local Dungeon Room Shuffle
+-
+Locations
+Local Town Entrance Shuffle- shuffle all entrances within a given town
+Hyrule Field Entrance Shuffle- shuffle all entrances within hyrule field (excludes castle town and lon lon ranch)
+
+GLITCHES & SPEEDRUNNING TECHNIQUES
+Easy bomb sliding
+Easy supersliding
+Easy megaflip
+Easy bomb hovering
+Easy ISG
+Easy seam walking
+Easy door of time skip
+Easy gainer
+
+UPGRADED SYSTEMS
+Features		Upgrades
+Song of storms		water bean soil
+Plant beans in soil	add different seeds/plants that produce different effects in the future.
+Happy masks		extended quest for other 4
+Useless chests		add treasure system to be sold at the treasure shop
+Fishing guild		collect fishes/loaches
+Gerudo guild		collect bounties
+
+BUILD FORKS
+Gregforce Quest- nearly complete
+3D Castletown- rebuild temple of time courtyard and castletown into 3d enviroments
+Castle Stealth Sequences- add 2 more castle stealth sequences; 1 for each stone
+Light Temple- brand new dungeon
+
+Future feature ideas and changes are not guarantees of inclusion.
 
 ## Disclaimer
 
