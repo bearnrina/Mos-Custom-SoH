@@ -200,48 +200,30 @@ The following roadmap preserves earlier feature ideas. Completed work is describ
 
 - **Map Mania:** Buyable maps for all 34 regions.
 - **Compassanity:** Stone of Agony functions as a map compass; dungeon compasses are replaced by perishable items.
+- Skippable cutscenes
 - Adjustable enemy drop rates, drop selection, and detection range.
 - Adjustable grass, pot, and other environmental drop rates and selections.
 - More hint options adapted from Randomizer.
-- A dash-strike attack.
 - Change Jabu-Jabu's exterior hit sound from stone to flesh.
 - A universal day/night cycle.
-- Fish anywhere, with bottle catches disabled while using that feature.
-- Improved horse mechanics.
+- Fish anywhere
+- Hylian Loach hunt
 - Restore Lake Hylia and Zora's Domain after the Water Temple.
 - Guards patrol the Hyrule Castle field.
 - **Slot Skins:** Switch between alternate assets for items, weapons, and equipment from the pause menu.
+- Expanded Happy Mask quest- add quest for other 4 masks
+- Expanded Spiritual Stone stealth sequence- a unique castle stealth sequence for each stone
 
 ### Additional shuffle modes
 
 The current Local Item Shuffle mode is described above. These are separate future ideas:
 
-- **Items:** A dedicated local dungeon shuffle; global dungeon C-item shuffle; combined map/compass pickups that free a chest; and an overworld-only shuffle excluding dungeons and grottos.
-- **Enemies:** Local dungeon, global dungeon, overworld, and boss shuffle modes.
-- **Dungeons:** Local dungeon-room shuffle.
-- **Locations:** Local town entrance shuffle, plus Hyrule Field entrance shuffle excluding Castle Town and Lon Lon Ranch.
+- Add enemies to Local Shuffle Mode
+- Integrate Global Shuffle Mode with item & enemy shuffle
 
 ### Glitches and speedrunning techniques
 
 Optional assists for bomb sliding, supersliding, megaflips, bomb hovering, infinite sword glitch (ISG), seam walking, Door of Time skip, and gainers.
-
-### Expanded systems and quests
-
-| System | Proposed expansion |
-| --- | --- |
-| Song of Storms | Water bean soil. |
-| Bean planting | Different seeds/plants with different effects. |
-| Happy Mask quest | Extend the quest to the other four masks. |
-| Otherwise unneeded chests | A treasure system with items sold at a treasure shop. |
-| Fishing guild | Collect fish and loaches. |
-| Gerudo guild | Collect bounties. |
-
-### Separate build ideas
-
-- **Gregforce Quest:** Separate quest project previously described as nearly complete.
-- **3D Castle Town:** Rebuild Castle Town and the Temple of Time courtyard as 3D environments.
-- **Castle Stealth Sequences:** Two additional sequences, one for each remaining Spiritual Stone.
-- **Light Temple:** A new dungeon.
 
 ## Disclaimer
 
