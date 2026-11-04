@@ -348,7 +348,7 @@ bool Context::GenerateLocalDungeonShuffle(LocalDungeonShuffleSaveData& result) {
 } // namespace Rando
 
 extern "C" s16 LocalDungeonShuffle_GetItemId(s16 scene, u8 treasureFlag, s16 vanillaItemId) {
-    if (IS_RANDO) {
+    if (IS_RANDO || IS_LOCAL_WORLD_SHUFFLE) {
         return vanillaItemId;
     }
     auto& data = gSaveContext.ship.localDungeonShuffle;

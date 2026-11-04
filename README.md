@@ -1,50 +1,145 @@
 # Mo's Custom SoH
 
-**A custom build of Ship of Harkinian for Windows.**
+**A custom build of Ship of Harkinian for Windows — v1.1.**
 
-Mo's Custom SoH builds on [Ship of Harkinian](https://www.shipofharkinian.com), the PC port of *The Legend of Zelda: Ocarina of Time*, with additional gameplay, equipment, economy, and interface options. This is an independent fan project, **not an official Harbour Masters release**.
+Mo's Custom SoH builds on [Ship of Harkinian](https://www.shipofharkinian.com), the PC port of *The Legend of Zelda: Ocarina of Time*, with additional gameplay, equipment, economy, control, and interface options. This is an independent fan project, **not an official Harbour Masters release**.
 
-> **Release status:** v1.0 source preparation. Public binaries, bundled mods, and release dates have not yet been finalized.
+Mo's custom release is **v1.1**. The underlying engine retains its upstream **9.2.3** version metadata. Windows is the tested platform.
+
+## Links
+
+- [Ship of Harkinian](https://www.shipofharkinian.com)
+- [Upstream Shipwright source](https://github.com/HarbourMasters/Shipwright)
+- [libultraship](https://github.com/Kenix3/libultraship/)
+- [ROM compatibility checker](https://ship.equipment/)
+- [Supported ROM hashes](https://github.com/HarbourMasters/Shipwright/blob/develop/docs/supportedHashes.json)
+- [OoT Reloaded — downloads and installation instructions](https://evilgames.eu/texture-packs/oot-reloaded.htm), by GhostlyDark. Choose the Ship of Harkinian version. This optional texture pack is not bundled.
+- [HD Roc's Feather](https://gamebanana.com/mods/662992)
+- [MM Jump Flips](https://gamebanana.com/mods/688588)
+- [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571)
 
 ## Features
 
-The custom development build includes the following modifications. Individual settings and availability should be checked against the final release before publication.
-
 ### Gameplay and difficulty
 
-- Adjustable ordinary-enemy health, with separate boss and miniboss adjustments reserved for future development.
-- Adjustable day/night cycle.
-- Adjustable enemy/boss speed options.
-- Durable Deku Sticks setting.
-- Optional death penalties for rupees, ammunition, and consumables.
-- Option to suppress magic-jar drops.
+- Adjustable ordinary-enemy health; separate boss and miniboss health adjustments remain future work.
+- Adjustable day and night lengths, plus enemy and boss speed options.
+- Speed modifiers that also affect climbing, block pushing, and crawling.
+- Faster swimming boosts and randomized enemy-size options.
+- Durable Deku Sticks, optional death penalties for rupees/ammunition/consumables, and suppression of magic-jar drops.
+- Adjustable healing and magic-item effects.
 - Separate child and adult area music settings.
-- Adjustable healing and magic item effects.
+- Existing Ship of Harkinian enhancements, fixes, and cutscene-skipping options.
 
 ### Items, shops, and economy
 
-- Roc's Feather, Bombchu Bag upgrades, Child's Wallet, Tycoon Wallet, Skeleton Key, and Fishing Rod integrated into the game's shops or item progression.
-- Bank Hylia deposit and withdrawal system.
-- Local dungeon-item shuffle option. Complete shuffle mode integration reserved for future development.
+- Roc's Feather, Bombchu Bag upgrades, Child's Wallet, Tycoon Wallet, Skeleton Key, and Fishing Rod integrated into shops or item progression.
+- Bank Hylia deposits and withdrawals.
+- Stone of Agony access to gossip-stone hints, with revised introductory dialogue.
+- Save-editor Give All controls for general resources, inventory, equipment, quest items, and dungeon items.
 
-### Controls and interface
+### Local Item Shuffle
 
-- C-Up item equipping and configurable D-pad item controls, with mutually exclusive selection.
-- Custom Navi D-pad HUD placement controls.
-- Additional HUD customization and Modifier 2 HUD toggle.
-- Arrow signs now have hit boxes and strikes produce sparks.
+Local Item Shuffle is selected as a **game mode** from the quest-selection screen. It is no longer a checkable enhancement under Extra Modes.
+
+The mode uses quest and settings screens styled to match the existing game modes. Its gold subtitle switches resolution to match the displayed Zelda logo.
+
+- **Start Local Item Shuffle:** begin with an accepted seed, then enter a file name.
+- **Generate New Seed:** prepare a new placement for review.
+- **Review Seed:** review an accepted candidate again before starting.
+
+Start and Review are unavailable until a seed has been accepted. Generating and reviewing a candidate does not create a save file; finishing name entry creates the accepted file.
+
+#### Seed ratings
+
+Every rating asks **“Do you want to continue?”** and offers **Yes / No**. Yes accepts the candidate. No discards it and returns to the Local Item Shuffle menu with Generate New Seed selected. Pressing B during review also returns to that menu.
+
+| Rating | Review message | Completion fanfare |
+| --- | --- | --- |
+| Standard | No tricks are required. | Obtain Heart Container |
+| Tricky | Advanced tricks may be required. | Obtain Item |
+| Glitches Required | Minor glitches may be required. | Enter Zelda |
+| Unverified | Warning: This seed may be unbeatable or require advanced glitches to finish. | Obtain Small Item |
+
+**Open Treasure Chest** plays during generation. Generation runs in the background, with menu input blocked until it finishes. Failed generation uses an error sound and does not create a save.
+
+#### Upgrades and age restrictions
+
+Upgrade rewards advance sequentially within their families, regardless of which source is found first:
+
+- Silver Scale → Golden Scale.
+- Goron's Bracelet → Silver Gauntlets → Golden Gauntlets.
+- Adult's Wallet → Giant's Wallet.
+- Hookshot → Longshot.
+- Bow/quiver, slingshot/bullet-bag, and bomb-bag capacity tiers.
+- Deku Stick and Deku Nut capacity upgrades, plus shuffled magic-meter upgrades.
+
+Item previews, awarded rewards, and seed validation use the progressive rules. Existing saved placements remain intact; already-owned inventory is not changed retroactively.
+
+Some shuffled chests remain restricted to child or adult Link. Trying to open one at the wrong age displays an explanation:
+
+- Child Link: “The chest is sealed with an old, rusty lock...”
+- Adult Link: “The lid of the chest is rusted shut...”
+
+### Mo's Custom Controls
+
+One checkbox combines C-Up item equipping, D-pad equipment controls, and relocated Navi/first-person controls.
+
+- Equip items to C-Up.
+- Change equipment in-game with the D-pad.
+- Access Navi and first-person view through D-pad Up.
+- Use the custom Navi icon when its mod is installed, or standard localized Navi text when it is absent.
+
+Consult the in-game tooltips for control combinations and HUD placement. The separate D-pad item-equipping option remains mutually exclusive with Mo's Custom Controls.
+
+### Interface, animations, and signs
+
+- Custom Navi D-pad HUD placement, additional HUD customization, and a Modifier 2 HUD toggle.
+- Majora's Mask running-jump flips through optional animation assets.
+- Arrow signs with hitboxes, hit sparks, and spin-attack knockdown behavior through the standalone arrow-sign mod.
+- Revised custom-setting menu labels, tooltips, and pop-up wording.
+
+### Mo's built-in presets
+
+The three curated enhancement presets are built into the game and refreshed for v1.1:
+
+- **Mo's OG+ (recommended for veterans)**
+- **Mo's Nostalgia+ (newcomers start here)**
+- **Mo's Vanilla+ (for purists only)**
+
+Find them under **Settings → Presets**. The built-in versions use the author's updated, gameplay-tested selections.
 
 ## Requirements and legal game assets
 
-**This project does not supply a commercial game ROM or Nintendo's copyrighted game assets.** You must provide a legally acquired, supported copy of *The Legend of Zelda: Ocarina of Time* to use Ship of Harkinian. See the [ROM compatibility checker](https://ship.equipment/) and [supported hashes](docs/supportedHashes.json).
+**This project does not supply a commercial ROM or extracted Nintendo game-data archive.** Provide your own legally acquired, supported copy of *The Legend of Zelda: Ocarina of Time*. Use the compatibility links above to check your version.
 
-Do not upload or distribute ROM files, generated `oot.o2r`/`oot-mq.o2r` game archives, saves, or other extracted Nintendo assets as part of this repository or its releases.
+Do not distribute ROM files, generated `oot.o2r` / `oot-mq.o2r` archives, saves, personal configurations, or other extracted Nintendo assets with this project.
 
 ## Installing and running
 
-**Windows is the currently tested development platform.** Public installation instructions will be added once the release package and its contents have been finalized. Do not use the upstream Ship of Harkinian download links below as though they were Mo's Custom SoH releases.
+1. Close the game and back up existing saves and configuration before updating.
+2. Extract the **Mo's Custom SoH Windows x64** download into a new writable folder.
+3. Supply your own supported `oot.o2r` or `oot-mq.o2r`, or launch `soh.exe` and follow the extractor prompts using your own supported ROM. The supplied `assets` folder contains extraction descriptions, not extracted game data.
+4. Launch `soh.exe`, choose a quest, and apply a curated preset if desired.
 
-For information on the original project, visit [Ship of Harkinian](https://www.shipofharkinian.com).
+The Windows download contains the executable, custom engine archive `soh.o2r`, extraction descriptions, notices, and standalone arrow-sign mod. It excludes ROMs, generated game-data archives, saves, personal settings, temporary presets, and the three optional animation/icon/feather mods.
+
+When migrating an existing installation, keep your backup until you have verified your saves and settings in the updated version. Upstream Ship of Harkinian downloads are separate from Mo's Custom SoH downloads.
+
+## Optional assets and texture packs
+
+Place compatible `.o2r` / `.otr` mod archives in `mods`, then restart after adding or removing them.
+
+| Feature | Without its optional assets | With the assets installed |
+| --- | --- | --- |
+| Mo's Custom Controls | Works with standard Navi text. | Automatically uses the custom Navi icon. |
+| Majora's Mask Jump Flips | Menu option is visible but unclickable; normal jumps remain. | Menu option becomes selectable. Both jump/landing headers and animation data are required. |
+| Roc's Feather | Works with fallback artwork. | Uses the optional HD artwork. |
+| Breakable arrow signs | Custom sign assets are unavailable. | Keep `mods/BreakableArrowSigns.o2r` installed for the custom assets. |
+
+The old combined `MoCustomAssets.o2r` is not required for the controls or Roc's Feather. The Windows release supplies arrow signs as their own archive instead.
+
+[OoT Reloaded](https://evilgames.eu/texture-packs/oot-reloaded.htm) is an optional texture pack by GhostlyDark. Follow its Ship of Harkinian installation instructions. It is not included in this download.
 
 ## Controls
 
@@ -54,111 +149,95 @@ The original Ship of Harkinian default keyboard layout is:
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Keyboard | X | C | Z | Space | WASD | Arrow keys | TFGH |
 
-Common shortcuts include `Esc` (menu), `F11` (fullscreen), and `Ctrl+R` (reset). Custom controls and HUD options may change how C-Up and the D-pad behave; consult the in-game settings and tooltips.
+Common shortcuts: `Esc` opens the menu, `F11` toggles fullscreen, and `Ctrl+R` resets. Custom controls and HUD options can change how C-Up and the D-pad behave; consult the in-game settings and tooltips.
 
 ## Source and development
 
-This repository is based on [Harbour Masters' Shipwright / Ship of Harkinian](https://github.com/HarbourMasters/Shipwright), which uses [libultraship](https://github.com/Kenix3/libultraship/) and work from the *Ocarina of Time* decompilation project. The upstream [build instructions](docs/BUILDING.md) are provided for reference; they have not yet been independently validated for this customized public source package.
+This project builds on [Harbour Masters' Shipwright](https://github.com/HarbourMasters/Shipwright), [libultraship](https://github.com/Kenix3/libultraship/), and the *Ocarina of Time* decompilation project.
 
-Custom assets for Ship of Harkinian are generally packaged as `.otr`/`.o2r` archives and placed in the `mods` directory. Only redistribute third-party mods or assets when their licenses or creators permit it. The three credited GameBanana modifications have been authorized for redistribution by their original authors.
+The source download includes the current customized libultraship and Torch source trees without Git history. Keep these included trees rather than replacing them with upstream submodule checkouts. The source package includes `SOURCE-BUILD.md` and the upstream `docs/BUILDING.md` for toolchain guidance.
+
+The current Release executable has compiled successfully and has been gameplay-tested by the author. The exported source has not received a separate clean build; the author also confirmed that the packaged Windows download passed its fresh-folder test. SHA-256 checksums and file manifests accompany the release packages.
 
 ## Credits and third-party notices
 
-- **Mo:** Custom build direction and modifications.
+- **Mo:** Custom build direction, modifications, preset curation, and gameplay testing.
 - **Harbour Masters and Ship of Harkinian contributors:** Original PC port and associated systems.
 - **libultraship contributors:** Supporting platform library.
 - **Ocarina of Time decompilation contributors:** Foundational reverse-engineering work.
-- **Third-party mod authors:** The following three modifications are included with redistribution permission from their original authors:
-  - **CGWolf95** — [HD Roc's Feather](https://gamebanana.com/mods/662992), custom Roc's Feather visual asset.
-  - **Neirn** — Original MM Jumps plugin author; **denoflions** — credited contributor. [MM Jump Flips](https://gamebanana.com/mods/688588) is submitted on GameBanana by **VioLink** as redistributor.
-  - **CGWolf95** — [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571), custom fairy interaction icon.
+- **GhostlyDark and OoT Reloaded contributors:** Optional texture pack.
+- **CGWolf95:** [HD Roc's Feather](https://gamebanana.com/mods/662992) and [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571).
+- **Neirn:** Original MM Jumps plugin author; **denoflions:** credited contributor. [MM Jump Flips](https://gamebanana.com/mods/688588) is submitted by **VioLink** as redistributor.
 
-These assets remain the work of their original creators. Inclusion does not imply that they endorse Mo's Custom SoH. The permission to redistribute these three assets does not extend to unrelated third-party content.
+The three optional GameBanana modifications have author permission for redistribution, but their archives are **not bundled in v1.1**. They remain the work of their original creators. Permission for these assets does not extend to unrelated third-party content, and credits do not imply endorsement.
 
-Retain all existing copyright notices, license files, and attribution documents from upstream and third-party components. See [upstream credits](docs/CREDITS.md).
+The Local Item Shuffle subtitle artwork was generated for this project. Its source and generation notes are in `soh/assets/sources/local-item-shuffle` in the source package.
+
+Retain all existing copyright notices, licenses, and attribution documents from upstream and third-party components. See `docs/CREDITS.md` in the source package and `CREDITS.md` / `licenses` in the Windows package.
 
 ## Planned features
-PLANNED FEATURES V 1.1
-Adjustable drop percentage- enhancements- difficulty- drops
-Adjustable hover boot duration & slide
-Adjustable iron boots run/sink speed
-Assign equipment to d-pad
-Make speed modifier affect climbing and block pushing
-Make quick swimming faster
-Add 'give all' option to general, equipment, quest items, & dungeon items in save editor
-Stone of agony allows talking to gossip stones
-Quick plant magic beans
-Clock on pause menu
-Void fall causes instant death
-Add deku nut tree drops
-Fix random enemy sizes
-Adjustable bunny hood speed
-Add night only option to gaurd vision
-Condense all menu text and pop-up text
-Skippable cutscenes
 
-PLANNED FEATURES V 1.2 and beyond
-Map Mania- Buyable maps- all 34 regions maps are buyable
-Compassanity- Stone of agony functions as map compass (all in-game compasses are replaced by perishable items)
-Adjustable enemy drop rate/selection
-Adjustable enemy detection range
-Adjustable grass/pot/etc drop rate/selection
-Add hint options from randomizer
-Dash strike attack
-Change Jabu Jabu's exterior hit sound from stone to flesh
-Universal day/night cycle
-Fish anywhere (turns off bottle catches)
-Improve horse mechanics
-Restore lake hylia and zoras domain after water temple
-Gaurds patrol hyrule castle field
-Slot Skins- toggle between multiple alternate assets for items, weapons & equipment in start menu
+The following roadmap preserves earlier feature ideas. Completed work is described above; remaining ideas are not promises of inclusion or release dates.
 
-SHUFFLE MODE (enhancements - extra modes)
-Items
-Local Dungeon Item Shuffle- shuffle all items within a given dungeon
-Global Dungeon Item Shuffle- shuffle all c-items between dungeons
-Combine Compass/Map- combine the map/compass pickup into one, thus freeing a chest
-World Item Shuffle- shuffle all items world items (no dungeons, grottos, etc.)
--
-Enemies
-Local Dungeon Enemy Shuffle
-Global Dungeon Enemy Shuffle
-World Enemy Shuffle
-Boss Shuffle
--
-Dungeons
-Local Dungeon Room Shuffle
--
-Locations
-Local Town Entrance Shuffle- shuffle all entrances within a given town
-Hyrule Field Entrance Shuffle- shuffle all entrances within hyrule field (excludes castle town and lon lon ranch)
+### Remaining gameplay and quality-of-life ideas
 
-GLITCHES & SPEEDRUNNING TECHNIQUES
-Easy bomb sliding
-Easy supersliding
-Easy megaflip
-Easy bomb hovering
-Easy ISG
-Easy seam walking
-Easy door of time skip
-Easy gainer
+- Adjustable drop percentages under Enhancements → Difficulty → Drops.
+- Adjustable Hover Boots duration and sliding.
+- Adjustable Iron Boots running and sinking speeds.
+- Faster Magic Bean planting.
+- A clock on the pause menu.
+- An option for void falls to cause instant death.
+- Deku Nut drops from trees.
+- Adjustable Bunny Hood speed.
+- A night-only option for visible guard vision.
+- Further randomized enemy-size refinements, cutscene skips, and menu-text improvements.
 
-UPGRADED SYSTEMS
-Features		Upgrades
-Song of storms		water bean soil
-Plant beans in soil	add different seeds/plants that produce different effects in the future.
-Happy masks		extended quest for other 4
-Useless chests		add treasure system to be sold at the treasure shop
-Fishing guild		collect fishes/loaches
-Gerudo guild		collect bounties
+### v1.2 and beyond
 
-BUILD FORKS
-Gregforce Quest- nearly complete
-3D Castletown- rebuild temple of time courtyard and castletown into 3d enviroments
-Castle Stealth Sequences- add 2 more castle stealth sequences; 1 for each stone
-Light Temple- brand new dungeon
+- **Map Mania:** Buyable maps for all 34 regions.
+- **Compassanity:** Stone of Agony functions as a map compass; dungeon compasses are replaced by perishable items.
+- Adjustable enemy drop rates, drop selection, and detection range.
+- Adjustable grass, pot, and other environmental drop rates and selections.
+- More hint options adapted from Randomizer.
+- A dash-strike attack.
+- Change Jabu-Jabu's exterior hit sound from stone to flesh.
+- A universal day/night cycle.
+- Fish anywhere, with bottle catches disabled while using that feature.
+- Improved horse mechanics.
+- Restore Lake Hylia and Zora's Domain after the Water Temple.
+- Guards patrol the Hyrule Castle field.
+- **Slot Skins:** Switch between alternate assets for items, weapons, and equipment from the pause menu.
 
-Future feature ideas and changes are not guarantees of inclusion.
+### Additional shuffle modes
+
+The current Local Item Shuffle mode is described above. These are separate future ideas:
+
+- **Items:** A dedicated local dungeon shuffle; global dungeon C-item shuffle; combined map/compass pickups that free a chest; and an overworld-only shuffle excluding dungeons and grottos.
+- **Enemies:** Local dungeon, global dungeon, overworld, and boss shuffle modes.
+- **Dungeons:** Local dungeon-room shuffle.
+- **Locations:** Local town entrance shuffle, plus Hyrule Field entrance shuffle excluding Castle Town and Lon Lon Ranch.
+
+### Glitches and speedrunning techniques
+
+Optional assists for bomb sliding, supersliding, megaflips, bomb hovering, infinite sword glitch (ISG), seam walking, Door of Time skip, and gainers.
+
+### Expanded systems and quests
+
+| System | Proposed expansion |
+| --- | --- |
+| Song of Storms | Water bean soil. |
+| Bean planting | Different seeds/plants with different effects. |
+| Happy Mask quest | Extend the quest to the other four masks. |
+| Otherwise unneeded chests | A treasure system with items sold at a treasure shop. |
+| Fishing guild | Collect fish and loaches. |
+| Gerudo guild | Collect bounties. |
+
+### Separate build ideas
+
+- **Gregforce Quest:** Separate quest project previously described as nearly complete.
+- **3D Castle Town:** Rebuild Castle Town and the Temple of Time courtyard as 3D environments.
+- **Castle Stealth Sequences:** Two additional sequences, one for each remaining Spiritual Stone.
+- **Light Temple:** A new dungeon.
 
 ## Disclaimer
 

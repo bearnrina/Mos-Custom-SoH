@@ -4,6 +4,7 @@
  * Description: Talon
  */
 
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_en_ta.h"
 #include "vt.h"
 #include "objects/object_ta/object_ta.h"
@@ -76,7 +77,7 @@ void EnTa_SetTextForTalkInLonLonHouse(EnTa* this, PlayState* play) {
 
     if (gSaveContext.eventInf[0] & 0x400) {
         if (gSaveContext.eventInf[0] & 0x100) {
-            if (Flags_GetItemGetInf(ITEMGETINF_TALON_BOTTLE)) {
+            if (LocalWorldShuffle_NpcCollected(RC_LLR_TALONS_CHICKENS, Flags_GetItemGetInf(ITEMGETINF_TALON_BOTTLE))) {
                 this->actor.textId = 0x2088;
             } else {
                 this->actor.textId = 0x2086;
@@ -87,7 +88,7 @@ void EnTa_SetTextForTalkInLonLonHouse(EnTa* this, PlayState* play) {
         gSaveContext.eventInf[0] &= ~0x100;
     } else if (faceReaction == 0) {
         if (Flags_GetInfTable(INFTABLE_TALKED_TO_TALON_IN_RANCH_HOUSE)) {
-            if (Flags_GetItemGetInf(ITEMGETINF_TALON_BOTTLE)) {
+            if (LocalWorldShuffle_NpcCollected(RC_LLR_TALONS_CHICKENS, Flags_GetItemGetInf(ITEMGETINF_TALON_BOTTLE))) {
                 this->actor.textId = 0x208B;
             } else {
                 this->actor.textId = 0x207F;
@@ -111,6 +112,7 @@ void EnTa_Init(Actor* thisx, PlayState* play2) {
 
     this->actor.colChkInfo.mass = MASS_IMMOVABLE;
     this->stateFlags = 0;
+    this->localWorldMilkPrize = 0;
     this->rapidBlinks = 0;
     this->nodOffTimer = 0;
     this->blinkTimer = 20;
@@ -866,6 +868,10 @@ void EnTa_TalkGeneralInLonLonHouse(EnTa* this, PlayState* play) {
 void EnTa_GiveItemInLonLonHouse(EnTa* this, PlayState* play) {
     if (Actor_HasParent(&this->actor, play) ||
         !GameInteractor_Should(VB_GIVE_ITEM_FROM_TALONS_CHICKENS, true, &this->actor)) {
+        if (!(this->stateFlags & 0x2)) {
+            LocalWorldShuffle_AcceptNpcPrize(&this->actor, play, RC_LLR_TALONS_CHICKENS);
+        }
+        this->localWorldMilkPrize = 0;
         this->actor.parent = NULL;
         this->actionFunc = EnTa_TalkGeneralInLonLonHouse;
         if (!(this->stateFlags & 0x2)) {
@@ -873,10 +879,14 @@ void EnTa_GiveItemInLonLonHouse(EnTa* this, PlayState* play) {
         }
         this->stateFlags &= ~0x2;
     } else if (this->stateFlags & 2) {
-        Actor_OfferGetItem(&this->actor, play, GI_MILK, 10000.0f, 50.0f);
+        if (this->localWorldMilkPrize) {
+            LocalWorldShuffle_OfferNpcPrize(&this->actor, play, RC_UNKNOWN_CHECK, GI_MILK, 10000.0f, 50.0f);
+        } else {
+            Actor_OfferGetItem(&this->actor, play, GI_MILK, 10000.0f, 50.0f);
+        }
     } else {
         if (GameInteractor_Should(VB_GIVE_ITEM_FROM_TALONS_CHICKENS, true, &this->actor)) {
-            Actor_OfferGetItem(&this->actor, play, GI_MILK_BOTTLE, 10000.0f, 50.0f);
+            LocalWorldShuffle_OfferNpcPrize(&this->actor, play, RC_LLR_TALONS_CHICKENS, GI_MILK_BOTTLE, 10000.0f, 50.0f);
         }
     }
     this->stateFlags |= 1;
@@ -888,7 +898,7 @@ void EnTa_TalkAfterCuccoGameFirstWon(EnTa* this, PlayState* play) {
         this->stateFlags &= ~0x2;
         EnTa_SetupAction(this, EnTa_GiveItemInLonLonHouse, EnTa_AnimRunToEnd);
         if (GameInteractor_Should(VB_GIVE_ITEM_FROM_TALONS_CHICKENS, true, &this->actor)) {
-            Actor_OfferGetItem(&this->actor, play, GI_MILK_BOTTLE, 10000.0f, 50.0f);
+            LocalWorldShuffle_OfferNpcPrize(&this->actor, play, RC_LLR_TALONS_CHICKENS, GI_MILK_BOTTLE, 10000.0f, 50.0f);
         }
     }
 }
@@ -907,6 +917,7 @@ void EnTa_WaitBuyMilkOrPlayCuccoGameResponse(EnTa* this, PlayState* play) {
                         EnTa_SetupAction(this, EnTa_TalkGeneralInLonLonHouse, EnTa_AnimRunToEnd);
                         break;
                     case 2:
+                        this->localWorldMilkPrize = 0;
                         this->stateFlags |= 2;
                         EnTa_SetupAction(this, EnTa_GiveItemInLonLonHouse, EnTa_AnimRunToEnd);
                         Rupees_ChangeBy(-30);
@@ -984,7 +995,7 @@ void EnTa_WaitForMarryMalonResponse(EnTa* this, PlayState* play) {
 void EnTa_ContinueTalkInLonLonHouse(EnTa* this, PlayState* play) {
     if ((Message_GetState(&play->msgCtx) == TEXT_STATE_EVENT) && Message_ShouldAdvance(play)) {
         Flags_SetInfTable(INFTABLE_TALKED_TO_TALON_IN_RANCH_HOUSE);
-        if (Flags_GetItemGetInf(ITEMGETINF_TALON_BOTTLE)) {
+        if (LocalWorldShuffle_NpcCollected(RC_LLR_TALONS_CHICKENS, Flags_GetItemGetInf(ITEMGETINF_TALON_BOTTLE))) {
             Message_ContinueTextbox(play, 0x208B);
             EnTa_SetupAction(this, EnTa_WaitBuyMilkOrPlayCuccoGameResponse, EnTa_AnimRunToEnd);
         } else {
@@ -1002,9 +1013,10 @@ void EnTa_TalkAfterCuccoGameWon(EnTa* this, PlayState* play) {
     if ((Message_GetState(&play->msgCtx) == TEXT_STATE_EVENT) && Message_ShouldAdvance(play)) {
         if (Inventory_HasEmptyBottle()) {
             Message_CloseTextbox(play);
+            this->localWorldMilkPrize = LocalWorldShuffle_NpcEnabled();
             this->stateFlags |= 2;
             EnTa_SetupAction(this, EnTa_GiveItemInLonLonHouse, EnTa_AnimRunToEnd);
-            Actor_OfferGetItem(&this->actor, play, GI_MILK, 10000.0f, 50.0f);
+            LocalWorldShuffle_OfferNpcPrize(&this->actor, play, RC_UNKNOWN_CHECK, GI_MILK, 10000.0f, 50.0f);
         } else {
             Message_ContinueTextbox(play, 0x208A);
             EnTa_SetupAction(this, EnTa_TalkGeneralInLonLonHouse, EnTa_AnimRunToEnd);

@@ -1,4 +1,5 @@
 #include "item.h"
+#include "LocalWorldShuffle.h"
 #include "SeedContext.h"
 #include "logic.h"
 #include "../../OTRGlobals.h"
@@ -46,7 +47,9 @@ void Item::ApplyEffect() const {
     auto ctx = Rando::Context::GetInstance();
     auto logic = ctx->GetLogic();
     if (!logic->CalculatingAvailableChecks) {
-        logic->ApplyItemEffect(StaticData::RetrieveItem(randomizerGet), true);
+        if (!LocalWorldShuffle_ApplyLogicItem(static_cast<u16>(randomizerGet))) {
+            logic->ApplyItemEffect(StaticData::RetrieveItem(randomizerGet), true);
+        }
     }
     logic->Set(logicVal, true);
 }

@@ -1,6 +1,8 @@
 #include "z_en_box.h"
 #include "soh/Enhancements/randomizer/ForestSwordQuest.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "soh/Enhancements/randomizer/LocalDungeonShuffle.h"
+#include "soh/Enhancements/custom-message/CustomMessageTypes.h"
 #include "objects/object_box/object_box.h"
 #include "soh_assets.h"
 #include <assert.h>
@@ -162,6 +164,9 @@ void EnBox_ClipToGround(EnBox* this, PlayState* play) {
 }
 
 static s32 EnBox_QuestIsOpen(EnBox* this, PlayState* play) {
+    if (LocalWorldShuffle_HasCheck(&this->dyna.actor, play, this->dyna.actor.params)) {
+        return LocalWorldShuffle_IsCollected(&this->dyna.actor, play, this->dyna.actor.params);
+    }
     if (this->forestSwordQuestReward == FOREST_SWORD_REWARD_SWORD) {
         return Flags_GetRandomizerInf(RAND_INF_OBTAINED_LOST_WOODS_SWORD_CHEST);
     }
@@ -273,6 +278,9 @@ void EnBox_Init(Actor* thisx, PlayState* play2) {
         }
     }
 
+    if (LocalWorldShuffle_HasCheck(&this->dyna.actor, play, this->dyna.actor.params)) {
+        this->getItemEntry = LocalWorldShuffle_GetEntry(&this->dyna.actor, play, this->dyna.actor.params);
+    }
     if (this->forestSwordQuestReward == FOREST_SWORD_REWARD_WALLET) {
         this->getItemEntry = ForestSwordQuest_GetWalletEntry();
     }
@@ -495,6 +503,9 @@ void EnBox_WaitOpen(EnBox* this, PlayState* play) {
 
     this->alpha = 255;
     this->movementFlags |= ENBOX_MOVE_IMMOBILE;
+    if (Actor_ProcessTalkRequest(&this->dyna.actor, play)) {
+        return;
+    }
     if (this->unk_1F4 != 0) { // unk_1F4 is modified by player code
         linkAge = gSaveContext.linkAge;
         anim = sAnimations[(this->unk_1F4 < 0 ? 2 : 0) + linkAge];
@@ -508,6 +519,7 @@ void EnBox_WaitOpen(EnBox* this, PlayState* play) {
                                this->dyna.actor.shape.rot.y, this->dyna.actor.shape.rot.z, 0xFFFF);
             Audio_PlayFanfare(NA_BGM_OPEN_TRE_BOX | 0x900);
         }
+        LocalWorldShuffle_Collect(&this->dyna.actor, play, this->dyna.actor.params);
         osSyncPrintf("Actor_Environment_Tbox_On() %d\n", this->dyna.actor.params & 0x1F);
         if (GameInteractor_Should(VB_CHEST_SET_TREASURE_FLAG, true, this)) {
             if (this->forestSwordQuestReward == FOREST_SWORD_REWARD_SWORD) {
@@ -527,7 +539,18 @@ void EnBox_WaitOpen(EnBox* this, PlayState* play) {
                 offeredItemId = LocalDungeonShuffle_GetItemId(play->sceneNum, this->dyna.actor.params & 0x1F,
                                                             offeredItemId);
             }
-            Actor_OfferGetItemNearby(&this->dyna.actor, play, -offeredItemId);
+            if (LocalWorldShuffle_HasCheck(&this->dyna.actor, play, this->dyna.actor.params)) {
+                GetItemEntry entry = this->getItemEntry;
+                if (!LocalWorldShuffle_CanCollect(&this->dyna.actor, play, this->dyna.actor.params)) {
+                    this->dyna.actor.textId = TEXT_LOCAL_WORLD_LOCKED_CHEST;
+                    Actor_OfferTalk(&this->dyna.actor, play, 50.0f);
+                    return;
+                }
+                entry.getItemId = -ABS(entry.getItemId);
+                GiveItemEntryFromActor(&this->dyna.actor, play, entry, 50.0f, 10.0f);
+            } else {
+                Actor_OfferGetItemNearby(&this->dyna.actor, play, -offeredItemId);
+            }
             if (this->forestSwordQuestReward == FOREST_SWORD_REWARD_WALLET &&
                 player->interactRangeActor == &this->dyna.actor && player->getItemId == -GI_SWORD_KOKIRI) {
                 // Negative IDs select the normal chest-opening animation. The player flips

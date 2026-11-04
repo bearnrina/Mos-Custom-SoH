@@ -39,6 +39,11 @@ static f32 GetSpeedModifierFactor(bool inputAvailable) {
     return 1.0f;
 }
 
+// C-callable accessor keeps climbing and push-block movement on the same activation rules.
+extern "C" f32 Ship_GetSpeedModifierFactor(s32 inputAvailable) {
+    return GetSpeedModifierFactor(inputAvailable != 0);
+}
+
 static f32 GetSpeedModifierJumpFactor() {
     if (CVarGetInteger(CVAR_CHEAT("SpeedModifier.DoesntChangeJump"), 0)) {
         return 1.0f;

@@ -40,6 +40,7 @@ class Context {
     void InitStaticData();
     // Uses a temporary world and restores all loaded randomizer state afterwards.
     bool GenerateLocalDungeonShuffle(LocalDungeonShuffleSaveData& result);
+    bool GenerateLocalWorldShuffle(LocalWorldShuffleSaveData& result);
     Hint* GetHint(RandomizerHint hintKey);
     void AddHint(const RandomizerHint hintId, const Hint hint);
     ItemLocation* GetItemLocation(RandomizerCheck locKey);

@@ -64,6 +64,18 @@ void BuildHintStoneMessage(uint16_t* textId, bool* loadFromMessageTable) {
 }
 
 void RegisterGossipStoneHints() {
+    COND_ID_HOOK(OnOpenText, 0x2054, !IS_RANDO,
+                 [](uint16_t* textId, bool* loadFromMessageTable) {
+                     if (gSaveContext.language != LANGUAGE_ENG) {
+                         return;
+                     }
+                     CustomMessage msg("Hey you! You look like you can&"
+                                       "appreciate a good bit of gossip.^"
+                                       "I overheard this...");
+                     msg.Format();
+                     msg.LoadIntoFont();
+                     *loadFromMessageTable = false;
+                 });
     COND_ID_HOOK(OnOpenText, TEXT_RANDOMIZER_GOSSIP_STONE_HINTS,
                  RAND_GET_OPTION(RSK_GOSSIP_STONE_HINTS).IsNot(RO_GOSSIP_STONES_NONE), BuildHintStoneMessage);
 }

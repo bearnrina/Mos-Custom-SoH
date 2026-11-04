@@ -29,6 +29,20 @@ extern PlayState* gPlayState;
 static std::string comboboxTooltip = "";
 bool isBetaQuestEnabled = false;
 
+// Keep CUpEquip as the stored switch so existing presets retain their selection.
+static void MigrateMoCustomControls() {
+    if (CVarGetInteger(CVAR_ENHANCEMENT("ChangeEquipmentWithDpad"), -1) != -1) {
+        if (CVarGetInteger(CVAR_ENHANCEMENT("ChangeEquipmentWithDpad"), 0) &&
+            !CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0)) {
+            CVarSetInteger(CVAR_ENHANCEMENT("CUpEquip"), 1);
+        }
+        CVarClear(CVAR_ENHANCEMENT("ChangeEquipmentWithDpad"));
+        Ship::Context::GetRawInstance()->GetWindow()->GetGui()->SaveConsoleVariablesNextFrame();
+    }
+}
+
+static RegisterShipInitFunc moCustomControlsInit(MigrateMoCustomControls);
+
 extern "C" {
 void enableBetaQuest() {
     isBetaQuestEnabled = true;
@@ -349,7 +363,7 @@ void SohMenu::AddMenuEnhancements() {
     AddWidget(path, "Answer Navi Prompt with L Button", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("NaviOnL"))
         .RaceDisable(false)
-        .Options(CheckboxOptions().Tooltip("Speak to Navi with L but enter First-Person Camera with C-Up. Equip Items on C-Up overrides this setting."));
+        .Options(CheckboxOptions().Tooltip("Speak to Navi with L but enter First-Person Camera with C-Up. Mo's Custom Controls overrides this setting."));
     AddWidget(path, "Don't Require Input for Credits Sequence", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("NoInputForCredits"))
         .RaceDisable(false)
@@ -442,6 +456,12 @@ void SohMenu::AddMenuEnhancements() {
     AddWidget(path, "Instant Putaway", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("InstantPutaway"))
         .Options(CheckboxOptions().Tooltip("Allow Link to put items away without having to wait around."));
+    AddWidget(path, "Expanded Navi Quest Hints", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"))
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Alternate Navi's original progression-aware quest hints with gameplay tips. "
+            "Starts with an original hint on each save; advances after the textbox closes. "
+            "Does not change Randomizer's Rando-Relevant Navi Hints."));
     AddWidget(path, "Navi Timer Resets on Scene Change", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("ResetNaviTimer"))
         .Options(
@@ -618,6 +638,10 @@ void SohMenu::AddMenuEnhancements() {
         .CVar(CVAR_ENHANCEMENT("SkipSwimDeepEndAnim"))
         .Options(CheckboxOptions().Tooltip("Skips Link's taking breath animation after coming up from water. "
                                            "This setting does not interfere with getting items from underwater."));
+    AddWidget(path, "Faster Swim Boosting", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("FasterSwimBoosting"))
+        .Options(CheckboxOptions().Tooltip(
+            "Swim boosting speed is increased. Rapidly press B in water to swim boost."));
     AddWidget(path, "Empty Bottles Faster", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("FasterBottleEmpty"))
         .Options(CheckboxOptions().Tooltip("Speeds up emptying animation when dumping out the contents of a bottle."));
@@ -700,6 +724,16 @@ void SohMenu::AddMenuEnhancements() {
     path.sidebarName = "Graphics";
     AddSidebarEntry("Enhancements", path.sidebarName, 3);
     path.column = SECTION_COLUMN_1;
+
+    AddWidget(path, "Mo's Custom Animations", WIDGET_SEPARATOR_TEXT);
+    AddWidget(path, "Majora's Mask Jump Flips", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("MoMMJumpFlips"))
+        .PreFunc([](WidgetInfo& info) {
+            info.options->disabled = !ResourceMgr_HasMoJumpFlipAssets();
+        })
+        .Options(CheckboxOptions().DefaultValue(false)
+            .Tooltip("Replaces running-jump animations with Majora's Mask flips. Requires the custom animation assets.")
+            .DisabledTooltip("Install the MM jump animation mod, then restart the game."));
 
     AddWidget(path, "Mods", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Disable Bomb Billboarding", WIDGET_CVAR_CHECKBOX)
@@ -808,17 +842,13 @@ void SohMenu::AddMenuEnhancements() {
         .Options(CheckboxOptions().Tooltip(
             "Preserve the minimap visibility state when going between areas rather than default it to \"on\" "
             "when going through loading zones."));
-    AddWidget(path, "Modifier 2 toggles ingame hud on/off.",
+    AddWidget(path, "Cycle HUD with Modifier 2",
               WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("Modifier2VitalsHudToggle"))
         .RaceDisable(false)
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Press Modifier 2 during gameplay to cycle through three HUD states:\n"
-            "First press: hide hearts, the magic meter, rupees, and the dungeon key display.\n"
-            "Second press: also hide the A, B, and C buttons, their labels, item icons, ammo counts, and Navi prompt.\n"
-            "Third press: restore normal HUD visibility.\n"
-            "Uses the same sounds as the minimap toggle. Disabling this option restores normal HUD visibility. "
-            "The current cycle state is not saved between launches."));
+            "Press Modifier 2 to cycle between normal display, hidden status counters, "
+            "and hidden status counters plus buttons."));
     AddWidget(path, "Visual Stone of Agony", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("VisualAgony"))
         .RaceDisable(false)
@@ -953,8 +983,13 @@ void SohMenu::AddMenuEnhancements() {
     AddSidebarEntry("Enhancements", path.sidebarName, 3);
     path.column = SECTION_COLUMN_1;
 
+    AddWidget(path, "Stone of Gossip", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_ENHANCEMENT("StoneOfAgonyGossipStones"))
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "Read Gossip Stone hints while carrying the Stone of Agony."));
+
     AddWidget(path, "Equipment", WIDGET_SEPARATOR_TEXT);
-    AddWidget(path, "Equip Items on C-Up", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Mo's Custom Controls", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("CUpEquip"))
         .Callback([](WidgetInfo& info) {
             if (CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0)) {
@@ -962,11 +997,11 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(CheckboxOptions().Tooltip(
-            "Adds a fourth item slot on C-Up. Press C-Up over an inventory item to equip it. "
-            "D-Pad Up answers Navi and targeted hints. Replaces the C-Up look-around shortcut; "
-            "item aiming is preserved. Cannot be enabled together with D-Pad item controls. Overrides Navi on L. "
-            "Shares the saved D-Pad Up item slot."));
-    AddWidget(path, "Equip Items on Dpad", WIDGET_CVAR_CHECKBOX)
+            "Equip items on C-Up. D-pad Up: Navi/first-person view, with custom icons.\n"
+            "Left: swords. Down: boots. Right: shields.\n"
+            "Sword cycling requires standing still with your weapon put away.\n"
+            "Cannot be enabled together with Equip Items on D-pad."));
+    AddWidget(path, "Equip Items on D-pad", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("DpadEquips"))
         .Callback([](WidgetInfo& info) {
             if (CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0)) {
@@ -974,7 +1009,7 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(CheckboxOptions().Tooltip(
-            "Equip items and equipment on the D-pad. Cannot be enabled together with C-Up item equipping. "
+            "Equip items and equipment on the D-pad. Cannot be enabled together with Mo's Custom Controls. "
             "If used with \"D-pad on Pause Screen\", you must "
             "hold C-Up to equip instead of navigate."));
     AddWidget(path, "Allow unequipping Items", WIDGET_CVAR_CHECKBOX)
@@ -1053,11 +1088,8 @@ void SohMenu::AddMenuEnhancements() {
         })
         .Options(ComboboxOptions()
                      .ComboMap(bunnyHoodEffectMap)
-                     .Tooltip("Wearing the Bunny Hood grants a speed and jump boost like in Majora's Mask.\n"
-                              "Can also be limited to only the speed boost.\n"
-                              "Randomizer logic only accounts for this when the seed's own \"Bunny Hood Effect\" "
-                              "setting is on.\n"
-                              "Also disables NPC's reactions to wearing the Bunny Hood."));
+                     .Tooltip("Choose faster running or faster running and longer jumps. NPCs ignore the hood.\n"
+                              "Randomizer logic requires the seed's Bunny Hood Effect setting."));
     AddWidget(path, "Masks Equippable as Adult", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ADULT_MASKS_NAME)
         .PreFunc([](WidgetInfo& info) {
@@ -1100,7 +1132,8 @@ void SohMenu::AddMenuEnhancements() {
             info.options->disabledTooltip = "Randomizer saves use their seed's Bombchu Bag settings.";
         })
         .Options(CheckboxOptions().Tooltip(
-            "Adds an upgradable bombchu bag to the bombchu shop"));
+            "Requires a Bombchu Bag to carry and use Bombchus and enter Bombchu Bowling. "
+            "Bag upgrades increase capacity."));
     AddWidget(path, "Remote Bombchu", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("RemoteBombchu"))
         .Options(CheckboxOptions().Tooltip("Allows you to control a Bombchu after dropping it.\n"
@@ -1212,10 +1245,7 @@ void SohMenu::AddMenuEnhancements() {
             info.options->disabledTooltip = "Randomizer saves use their own Roc's Feather and shop settings.";
         })
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Replaces the Kokiri Shop's 10-Deku-Nut bundle with Roc's Feather for 99 rupees. "
-            "Equip it to perform a jump as either Child or Adult Link. "
-            "The feather sells out after purchase and remains owned when this option is disabled. "
-            "Leave and re-enter the shop after changing this setting."));
+            "Adds Roc's Feather to the Kokiri Shop for 99 rupees. Equip it to jump as either age."));
 
     AddWidget(path, "Fishing", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Fishing Pole in Zora Shop", WIDGET_CVAR_CHECKBOX)
@@ -1225,19 +1255,17 @@ void SohMenu::AddMenuEnhancements() {
             info.options->disabledTooltip = "Randomizer saves use their own fishing pole and shop settings.";
         })
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Adds a Fishing Pole to the Zora Shop for 200 rupees. You must own it to fish at the Fishing Pond. "
-            "The purchase is permanent and works for both ages. The pond's usual 20-rupee fee still applies. "
-            "Leave and re-enter the shop or pond after changing this setting."));
+            "Adds a Fishing Pole to Zora Shop for 200 rupees. You must own one to fish at the Fishing Pond."));
 
     AddWidget(path, "Wallet", WIDGET_SEPARATOR_TEXT);
-    AddWidget(path, "Enable Child's Wallet", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Require Child's Wallet", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("ForestSwordQuest"))
         .PreFunc([](WidgetInfo& info) {
             info.options->disabled = IS_RANDO && GameInteractor::IsSaveLoaded(true);
             info.options->disabledTooltip = "Randomizer saves use their own item placements and wallets.";
         })
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "The Child's Wallet it hidden somewhere in Kokiri Forest, find it to store rupees!"));
+            "Requires finding the Child's Wallet before collecting rupees. Holds up to 99 rupees."));
     AddWidget(path, "Tycoon Wallet in Market Bazaar", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("TycoonWalletInMarketBazaar"))
         .PreFunc([](WidgetInfo& info) {
@@ -1245,10 +1273,8 @@ void SohMenu::AddMenuEnhancements() {
             info.options->disabledTooltip = "Randomizer saves use their own wallet and shop settings.";
         })
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Replaces the Market Bazaar's Recovery Heart with a one-time Tycoon Wallet purchase "
-            "for 500 rupees. Requires the Giant's Wallet and increases capacity to 999 rupees. "
-            "The upgrade remains owned when this option is disabled. "
-            "Leave and re-enter the shop after changing this setting."));
+            "Adds the Tycoon Wallet to the Market Bazaar for 500 rupees. Holds 999 rupees. "
+            "Requires the Giant's Wallet."));
 
     AddWidget(path, "Keys", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Key Rings in Goron Shop", WIDGET_CVAR_CHECKBOX)
@@ -1258,12 +1284,8 @@ void SohMenu::AddMenuEnhancements() {
             info.options->disabledTooltip = "Randomizer saves use their own dungeon items and shop settings.";
         })
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Adds one rotating key-ring slot to the Goron Shop after becoming Adult Link. Each ring costs 200 rupees "
-            "and supplies its location's full set of small keys. Temple stock advances with medallions; "
-            "an unpurchased temple ring disappears permanently when its medallion is earned. "
-            "After buying the current ring, the slot offers Well, Fortress, then Training Ground rings, "
-            "skipping purchased rings, then sells out. All six medallions unlock Ganon's Castle. "
-            "Boss keys are not included. Leave and re-enter the shop after changing this setting."));
+            "Sells dungeon Key Rings for 200 rupees each. Each provides all small keys for its area. "
+            "Stock changes with your progress."));
     AddWidget(path, "Skeleton Key in Kakariko Bazaar", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("SkeletonKeyInKakarikoBazaar"))
         .PreFunc([](WidgetInfo& info) {
@@ -1271,11 +1293,8 @@ void SohMenu::AddMenuEnhancements() {
             info.options->disabledTooltip = "Randomizer saves use their own Skeleton Key and shop settings.";
         })
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Replaces the adult Kakariko Bazaar's Recovery Heart with a Skeleton Key for 999 rupees. "
-            "Requires the Tycoon Wallet. Unlocks small-key doors without consuming keys; boss keys "
-            "are still required. The Treasure Chest Game is unchanged. One per customer. "
-            "A purchased key stays useful when this option is disabled. "
-            "Leave and re-enter the shop after changing this setting."));
+            "Adds the Skeleton Key to Kakariko Bazaar for 999 rupees. "
+            "Opens small-key doors without consuming keys. Boss Keys are still required."));
 
     AddWidget(path, "Magic Spells", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Better Farore's Wind", WIDGET_CVAR_CHECKBOX)
@@ -1593,9 +1612,7 @@ void SohMenu::AddMenuEnhancements() {
     AddWidget(path, "Starting Hearts: %d", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_ENHANCEMENT("StartingHearts"))
         .Options(IntSliderOptions().Min(1).Max(5).DefaultValue(3).Format("%d hearts").Tooltip(
-            "Sets starting maximum and current health for new normal and Master Quest saves.\n"
-            "Does not change existing saves. Default: 3 hearts.\n"
-            "Randomizer and debug saves use their own starting health."));
+            "Set the starting health for new saves. Does not affect randomizer, existing or debug saves. Default is 3."));
     AddWidget(path, "Permanent Heart Loss", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("PermanentHeartLoss"))
         .Options(CheckboxOptions().Tooltip(
@@ -1666,7 +1683,7 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(ComboboxOptions().ComboMap(moHealingRecoveryHeartChoices).DefaultIndex(0)
-                     .Tooltip("Adjusts health restored. Vanilla preserves the original item effect."));
+                     .Tooltip("Sets hearts restored. Vanilla keeps the original effect."));
     AddWidget(path, "Red Potion", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingRedPotion"))
         .PreFunc([](WidgetInfo& info) {
@@ -1676,7 +1693,7 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(ComboboxOptions().ComboMap(moHealingRedPotionChoices).DefaultIndex(0)
-                     .Tooltip("Adjusts health restored. Vanilla preserves the original item effect."));
+                     .Tooltip("Sets hearts restored. Vanilla keeps the original effect."));
     AddWidget(path, "Blue Potion (Health)", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingBluePotionHealth"))
         .PreFunc([](WidgetInfo& info) {
@@ -1686,7 +1703,7 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(ComboboxOptions().ComboMap(moHealingBluePotionHealthChoices).DefaultIndex(0)
-                     .Tooltip("Adjusts health restored. Vanilla preserves the original item effect."));
+                     .Tooltip("Sets hearts restored. Vanilla keeps the original effect."));
     AddWidget(path, "Fairy (Bottled/Stray)", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingFairyNormal"))
         .PreFunc([](WidgetInfo& info) {
@@ -1696,8 +1713,8 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(ComboboxOptions().ComboMap(moHealingFairyNormalChoices).DefaultIndex(0)
-                     .Tooltip("Adjusts health restored. Vanilla preserves the original item effect."));
-    AddWidget(path, "Fairy (Revive)", WIDGET_CVAR_COMBOBOX)
+                     .Tooltip("Sets hearts restored. Vanilla keeps the original effect."));
+    AddWidget(path, "Fairy Revival", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingFairyRevive"))
         .PreFunc([](WidgetInfo& info) {
             if (CVarGetInteger(CVAR_ENHANCEMENT("HealingFairyRevive"), 0) == 7) {
@@ -1706,7 +1723,7 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(ComboboxOptions().ComboMap(moHealingFairyReviveChoices).DefaultIndex(0)
-                     .Tooltip("Adjusts health restored. Vanilla preserves the original item effect."));
+                     .Tooltip("Sets hearts restored. Vanilla keeps the original effect."));
     AddWidget(path, "Milk (Per Serving)", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingMilk"))
         .PreFunc([](WidgetInfo& info) {
@@ -1716,16 +1733,16 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(ComboboxOptions().ComboMap(moHealingMilkChoices).DefaultIndex(0)
-                     .Tooltip("Adjusts health restored. Vanilla preserves the original item effect."));
+                     .Tooltip("Sets hearts restored. Vanilla keeps the original effect."));
     AddWidget(path, "Magic Item Effects", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Small Magic Jar", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingMagicJarSmall"))
         .Options(ComboboxOptions().ComboMap(moHealingMagicJarSmallChoices).DefaultIndex(0)
-                     .Tooltip("Percentage of current magic capacity. Vanilla preserves the original effect."));
+                     .Tooltip("Sets magic restored as a percentage of your magic meter. Vanilla keeps the original effect."));
     AddWidget(path, "Large Magic Jar", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingMagicJarLarge"))
         .Options(ComboboxOptions().ComboMap(moHealingMagicJarLargeChoices).DefaultIndex(0)
-                     .Tooltip("Percentage of current magic capacity. Vanilla preserves the original effect."));
+                     .Tooltip("Sets magic restored as a percentage of your magic meter. Vanilla keeps the original effect."));
     AddWidget(path, "Green Potion", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingGreenPotionMagic"))
         .PreFunc([](WidgetInfo& info) {
@@ -1735,7 +1752,7 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(ComboboxOptions().ComboMap(moHealingGreenPotionMagicChoices).DefaultIndex(0)
-                     .Tooltip("Percentage of current magic capacity. Vanilla preserves the original effect."));
+                     .Tooltip("Sets magic restored as a percentage of your magic meter. Vanilla keeps the original effect."));
     AddWidget(path, "Blue Potion (Magic)", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("HealingBluePotionMagic"))
         .PreFunc([](WidgetInfo& info) {
@@ -1745,7 +1762,7 @@ void SohMenu::AddMenuEnhancements() {
             }
         })
         .Options(ComboboxOptions().ComboMap(moHealingBluePotionMagicChoices).DefaultIndex(0)
-                     .Tooltip("Percentage of current magic capacity. Vanilla preserves the original effect."));
+                     .Tooltip("Sets magic restored as a percentage of your magic meter. Vanilla keeps the original effect."));
 
     path.column = SECTION_COLUMN_2;
     AddWidget(path, "Drops", WIDGET_SEPARATOR_TEXT);
@@ -1800,34 +1817,33 @@ void SohMenu::AddMenuEnhancements() {
 
     path.column = SECTION_COLUMN_3;
     AddWidget(path, "Enemies", WIDGET_SEPARATOR_TEXT);
-    AddWidget(path, "Hyper Bosses", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Adjust Boss Speed", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("HyperBosses"))
         .Options(CheckboxOptions().Tooltip("Enable adjustable speed for bosses."));
     AddWidget(path, "Boss Speed: %.2fx", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_ENHANCEMENT("HyperBossesSpeed"))
         .PreFunc([](WidgetInfo& info) {
             info.options->disabled = !CVarGetInteger(CVAR_ENHANCEMENT("HyperBosses"), 0);
-            info.options->disabledTooltip = "Adjusts how fast bosses move and act. 1.00x is vanilla speed; 2.00x is double speed.";
+            info.options->disabledTooltip = "Enable Adjust Boss Speed.";
         })
         .Options(FloatSliderOptions().Min(1.0f).Max(2.0f).DefaultValue(2.0f).Format("%.2fx").Tooltip(
-            "Adjusts how fast bosses move and act. 1.00x is vanilla speed; 2.00x is double speed."));
-    AddWidget(path, "Hyper Enemies", WIDGET_CVAR_CHECKBOX)
+            "1.00x is normal speed; 2.00x is double speed."));
+    AddWidget(path, "Adjust Enemy Speed", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("HyperEnemies"))
         .Options(CheckboxOptions().Tooltip("Enable adjustable speed for regular enemies and minibosses."));
     AddWidget(path, "Enemy Speed: %.2fx", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_ENHANCEMENT("HyperEnemiesSpeed"))
         .PreFunc([](WidgetInfo& info) {
             info.options->disabled = !CVarGetInteger(CVAR_ENHANCEMENT("HyperEnemies"), 0);
-            info.options->disabledTooltip = "Adjusts how fast regular enemies and minibosses move and act. 1.00x is vanilla speed; 2.00x is double speed.";
+            info.options->disabledTooltip = "Enable Adjust Enemy Speed.";
         })
         .Options(FloatSliderOptions().Min(1.0f).Max(2.0f).DefaultValue(2.0f).Format("%.2fx").Tooltip(
-            "Adjusts how fast regular enemies and minibosses move and act. 1.00x is vanilla speed; 2.00x is double speed."));
+            "1.00x is normal speed; 2.00x is double speed."));
     AddWidget(path, "Enemy Health", WIDGET_CVAR_COMBOBOX)
         .CVar(CVAR_ENHANCEMENT("MoEnemyHealthPercent"))
         .Options(ComboboxOptions().ComboMap(moEnemyHealthChoices).DefaultIndex(100).Tooltip(
-            "Adjusts starting health of ordinary enemies. 100% is vanilla. "
-            "Bosses, minibosses, and special scripted enemies are excluded. "
-            "Changes apply to newly initialized enemies only."));
+            "Sets supported regular enemies' health. 100% is normal. Bosses and minibosses are unaffected. "
+            "Takes effect when enemies spawn."));
     AddWidget(path, "Enable Visual Guard Vision", WIDGET_CVAR_CHECKBOX).CVar(CVAR_ENHANCEMENT("GuardVision"));
     AddWidget(path, "Leever Spawn Rate: %d seconds", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_ENHANCEMENT("LeeverSpawnRate"))
@@ -1852,17 +1868,17 @@ void SohMenu::AddMenuEnhancements() {
     }
 
     AddWidget(path, "Death", WIDGET_SEPARATOR_TEXT);
-    AddWidget(path, "Lose All Rupees Upon Death", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Lose Rupees on Death", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("LoseRupeesOnDeath"))
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Lose all carried rupees when reaching Game Over, including pending rupee changes. "
             "Fairy revivals do not trigger this penalty."));
-    AddWidget(path, "Lose All Ammo Upon Death", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Lose Ammo on Death", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("LoseAmmoOnDeath"))
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Lose all bombs, arrows, Deku Seeds, and Bombchus when reaching Game Over. "
             "Owned equipment and capacity upgrades are kept. Fairy revivals do not trigger this penalty."));
-    AddWidget(path, "Lose All Consumable Items Upon Death", WIDGET_CVAR_CHECKBOX)
+    AddWidget(path, "Lose Consumables on Death", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("LoseConsumableItemsOnDeath"))
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
             "Lose all Deku Sticks, Deku Nuts, and Magic Beans, and empty every owned bottle when reaching Game Over. "
@@ -2155,8 +2171,8 @@ void SohMenu::AddMenuEnhancements() {
             info.options->disabledTooltip = "Bank Hylia is available in normal and Master Quest saves.";
         })
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Replaces beggar's bottle-content buying service with banking services. "
-            "Savings are protected from rupee loss on death. "
+            "Turns the Market beggar into a banker. Childhood deposits double when you become an adult. "
+            "Withdrawals require adult Link. Savings survive rupee-loss death penalties. "
             "Disabling restores bottle buying and preserves savings."));
 
     AddWidget(path, "Bounce off Walls", WIDGET_CVAR_CHECKBOX)
@@ -2191,16 +2207,15 @@ void SohMenu::AddMenuEnhancements() {
     AddWidget(path, "Breakable Arrow Signs", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("BreakableArrowSigns"))
         .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Sword hits knock the arrow-shaped sign board off its post. The board tumbles to the ground.\n"
-            "Play Zelda's Lullaby or reload the area to repair it. Broken signs cannot be read.\n"
-            "Turning this option off also repairs broken arrow signs."));
+            "Knock arrow signs down with a spin attack. Other sword strikes produce sparks. "
+            "Play Zelda's Lullaby to repair them."));
     AddWidget(path, "Rupee Dash Mode", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("RupeeDash"))
         .Options(CheckboxOptions().Tooltip("Rupees reduce over time; Link suffers damage when the count hits 0."));
     AddWidget(path, "Rupee Dash Wallet Scaling", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("RupeeDashScaling"))
         .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger(CVAR_ENHANCEMENT("RupeeDash"), 0) == 0; })
-        .Options(CheckboxOptions().DefaultValue(true).Tooltip("The larger Link's wallet, the faster Rupees reduce."));
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip("Larger wallets increase the rupees lost each interval."));
     AddWidget(path, "Rupee Dash Interval: %d seconds", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_ENHANCEMENT("RupeeDashInterval"))
         .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger(CVAR_ENHANCEMENT("RupeeDash"), 0) == 0; })
@@ -2209,7 +2224,7 @@ void SohMenu::AddMenuEnhancements() {
                      .Max(10)
                      .DefaultValue(5)
                      .Format("%d seconds")
-                     .Tooltip("Interval between Rupee reduction in Rupee Dash Mode."));
+                     .Tooltip("Seconds between rupee deductions in Rupee Dash Mode."));
     AddWidget(path, "Shadow Tag Mode", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("ShadowTag"))
         .Options(CheckboxOptions().Tooltip("A Wallmaster follows Link everywhere, don't get caught!"));
@@ -2396,21 +2411,25 @@ void SohMenu::AddMenuEnhancements() {
 
     path.column = SECTION_COLUMN_3;
     AddWidget(path, "Speed Modifier", WIDGET_SEPARATOR_TEXT);
-    AddWidget(path, "Toggle modifier instead of holding", WIDGET_CVAR_CHECKBOX)
-        .CVar(CVAR_CHEAT("SpeedModifier.SpeedToggle"));
-    AddWidget(path, "Don't affect jump distance/velocity", WIDGET_CVAR_CHECKBOX)
-        .CVar(CVAR_CHEAT("SpeedModifier.DoesntChangeJump"));
+    AddWidget(path, "Toggle Speed Modifier", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_CHEAT("SpeedModifier.SpeedToggle"))
+        .Options(CheckboxOptions().Tooltip(
+            "Press the selected button combination to toggle the modifier instead of holding it."));
+    AddWidget(path, "Keep Normal Jump Distance", WIDGET_CVAR_CHECKBOX)
+        .CVar(CVAR_CHEAT("SpeedModifier.DoesntChangeJump"))
+        .Options(CheckboxOptions().Tooltip(
+            "Prevents the speed modifier from changing jump speed and distance."));
     AddWidget(path, "Multiplier:", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar(CVAR_CHEAT("SpeedModifier.Value"))
         .Options(FloatSliderOptions().IsPercentage().Min(0.01f).Max(5.0f).DefaultValue(1.0f).ShowButtons(true).Format(
-            "%.0f%%"));
+            "%.0f%%").Tooltip("Scales running, swimming, climbing, block pushing, and crawling. Can also affect jumps."));
     AddWidget(path, "Button Combination:", WIDGET_CVAR_BTN_SELECTOR)
         .CVar(CVAR_CHEAT("SpeedModifier.Btn"))
         .Options(
             BtnSelectorOptions()
                 .DefaultValue(BTN_CUSTOM_MODIFIER1)
-                .Tooltip("Buttons that activate Speed Modifier 1.\n\n"
-                         "If \"Toggle modifier instead of holding\" is off, hold this combo to apply the modifier.\n"
+                .Tooltip("Buttons that activate the speed modifier.\n\n"
+                         "If \"Toggle Speed Modifier\" is off, hold this combo to apply the modifier.\n"
                          "If it is on, tap this combo to toggle the modifier on/off."));
 
     AddWidget(path, "Save States", WIDGET_SEPARATOR_TEXT);

@@ -1,3 +1,4 @@
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_en_bom_bowl_man.h"
 #include "vt.h"
 #include "overlays/actors/ovl_En_Syateki_Niw/z_en_syateki_niw.h"
@@ -403,7 +404,7 @@ void EnBomBowMan_ChooseShowPrize(EnBomBowlMan* this, PlayState* play) {
             switch (this->prizeSelect) {
                 case 0:
                     prizeTemp = EXITEM_BOMB_BAG_BOWLING;
-                    if (Flags_GetItemGetInf(ITEMGETINF_11)) {
+                    if (LocalWorldShuffle_NpcCollected(RC_MARKET_BOMBCHU_BOWLING_FIRST_PRIZE, Flags_GetItemGetInf(ITEMGETINF_11))) {
                         prizeTemp = EXITEM_PURPLE_RUPEE_BOWLING;
                     }
                     break;
@@ -415,7 +416,7 @@ void EnBomBowMan_ChooseShowPrize(EnBomBowlMan* this, PlayState* play) {
                     break;
                 case 3:
                     prizeTemp = EXITEM_HEART_PIECE_BOWLING;
-                    if (Flags_GetItemGetInf(ITEMGETINF_12)) {
+                    if (LocalWorldShuffle_NpcCollected(RC_MARKET_BOMBCHU_BOWLING_SECOND_PRIZE, Flags_GetItemGetInf(ITEMGETINF_12))) {
                         prizeTemp = EXITEM_PURPLE_RUPEE_BOWLING;
                     }
                     break;

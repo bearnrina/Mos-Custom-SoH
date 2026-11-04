@@ -1,3 +1,4 @@
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_en_syateki_man.h"
 #include "vt.h"
 #include "overlays/actors/ovl_En_Syateki_Itm/z_en_syateki_itm.h"
@@ -342,7 +343,7 @@ void EnSyatekiMan_EndGame(EnSyatekiMan* this, PlayState* play) {
                     this->tempGallery = this->actor.parent;
                     this->actor.parent = NULL;
                     if (!LINK_IS_ADULT) {
-                        if (!Flags_GetItemGetInf(ITEMGETINF_0D)) {
+                        if (!LocalWorldShuffle_NpcCollected(RC_MARKET_SHOOTING_GALLERY_REWARD, Flags_GetItemGetInf(ITEMGETINF_0D))) {
                             osSyncPrintf(VT_FGCOL(GREEN) "☆☆☆☆☆ Equip_Pachinko ☆☆☆☆☆ %d\n" VT_RST,
                                          CUR_UPG_VALUE(UPG_BULLET_BAG));
                             if (CUR_UPG_VALUE(UPG_BULLET_BAG) == 1) {
@@ -355,7 +356,7 @@ void EnSyatekiMan_EndGame(EnSyatekiMan* this, PlayState* play) {
                         }
                     } else {
                         // Only give the adult rando reward when the player has a quiver
-                        if (!Flags_GetItemGetInf(ITEMGETINF_0E)) {
+                        if (!LocalWorldShuffle_NpcCollected(RC_KAK_SHOOTING_GALLERY_REWARD, Flags_GetItemGetInf(ITEMGETINF_0E))) {
                             osSyncPrintf(VT_FGCOL(GREEN) "☆☆☆☆☆ Equip_Bow ☆☆☆☆☆ %d\n" VT_RST,
                                          CUR_UPG_VALUE(UPG_QUIVER));
                             switch (CUR_UPG_VALUE(UPG_QUIVER)) {
@@ -373,8 +374,15 @@ void EnSyatekiMan_EndGame(EnSyatekiMan* this, PlayState* play) {
                             this->getItemId = GI_RUPEE_PURPLE;
                         }
                     }
+                    if (LocalWorldShuffle_NpcEnabled() && !LocalWorldShuffle_NpcCollected(
+                            LINK_IS_ADULT ? RC_KAK_SHOOTING_GALLERY_REWARD : RC_MARKET_SHOOTING_GALLERY_REWARD, false)) {
+                        // Keep native completion decisions independent of the shuffled award.
+                        this->getItemId = LINK_IS_ADULT ? GI_QUIVER_40 : GI_BULLET_BAG_40;
+                    }
                     if (GameInteractor_Should(VB_GIVE_ITEM_FROM_SHOOTING_GALLERY, true, this)) {
-                        Actor_OfferGetItem(&this->actor, play, this->getItemId, 2000.0f, 1000.0f);
+                        LocalWorldShuffle_OfferNpcPrize(&this->actor, play,
+                            LINK_IS_ADULT ? RC_KAK_SHOOTING_GALLERY_REWARD : RC_MARKET_SHOOTING_GALLERY_REWARD,
+                            this->getItemId, 2000.0f, 1000.0f);
                     }
                     this->actionFunc = EnSyatekiMan_GivePrize;
                     break;
@@ -404,9 +412,13 @@ void EnSyatekiMan_EndGame(EnSyatekiMan* this, PlayState* play) {
 void EnSyatekiMan_GivePrize(EnSyatekiMan* this, PlayState* play) {
     SkelAnime_Update(&this->skelAnime);
     if (Actor_HasParent(&this->actor, play) || !GameInteractor_Should(VB_GIVE_ITEM_FROM_SHOOTING_GALLERY, true, this)) {
+        LocalWorldShuffle_AcceptNpcPrize(&this->actor, play,
+            LINK_IS_ADULT ? RC_KAK_SHOOTING_GALLERY_REWARD : RC_MARKET_SHOOTING_GALLERY_REWARD);
         this->actionFunc = EnSyatekiMan_FinishPrize;
     } else {
-        Actor_OfferGetItem(&this->actor, play, this->getItemId, 2000.0f, 1000.0f);
+        LocalWorldShuffle_OfferNpcPrize(&this->actor, play,
+                            LINK_IS_ADULT ? RC_KAK_SHOOTING_GALLERY_REWARD : RC_MARKET_SHOOTING_GALLERY_REWARD,
+                            this->getItemId, 2000.0f, 1000.0f);
     }
 }
 

@@ -11,6 +11,9 @@
 
 #define FLAGS ACTOR_FLAG_UPDATE_CULLING_DISABLED
 
+// Shared Speed Modifier factor (including toggle and modifier-button modes).
+extern f32 Ship_GetSpeedModifierFactor(s32 inputAvailable);
+
 void ObjOshihiki_Init(Actor* thisx, PlayState* play);
 void ObjOshihiki_Destroy(Actor* thisx, PlayState* play);
 void ObjOshihiki_Update(Actor* thisx, PlayState* play);
@@ -560,10 +563,17 @@ void ObjOshihiki_Push(ObjOshihiki* this, PlayState* play) {
     f32 pushDistSigned;
     s32 stopFlag;
 
+    // Multiply the existing push/pull speed while preserving FasterBlockPush settings.
+    f32 speedFactor = Ship_GetSpeedModifierFactor(true);
+    if (speedFactor < 0.01f) {
+        speedFactor = 0.01f;
+    }
     this->pushSpeed = this->pushSpeed + (CVarGetInteger(CVAR_ENHANCEMENT("FasterBlockPush"), 0) * 0.25) + 0.5f;
     this->stateFlags |= PUSHBLOCK_PUSH;
     this->pushSpeed = CLAMP_MAX(this->pushSpeed, 2.0f + (CVarGetInteger(CVAR_ENHANCEMENT("FasterBlockPush"), 0) * 0.5));
-    stopFlag = Math_StepToF(&this->pushDist, 20.0f, this->pushSpeed);
+    // Keep vanilla acceleration/cap behavior when the modifier is inactive.
+    // Scale only the actual movement step, not the stored acceleration state.
+    stopFlag = Math_StepToF(&this->pushDist, 20.0f, this->pushSpeed * speedFactor);
     pushDistSigned = ((this->direction >= 0.0f) ? 1.0f : -1.0f) * this->pushDist;
     thisx->world.pos.x = thisx->home.pos.x + (pushDistSigned * this->yawSin);
     thisx->world.pos.z = thisx->home.pos.z + (pushDistSigned * this->yawCos);
@@ -589,6 +599,10 @@ void ObjOshihiki_Push(ObjOshihiki* this, PlayState* play) {
         this->pushDist = 0.0f;
         this->pushSpeed = 0.0f;
         this->timer = 10 - ((CVarGetInteger(CVAR_ENHANCEMENT("FasterBlockPush"), 0) * 3) / 2);
+        // Scale the between-moves delay as well; zero means no extra cooldown.
+        if (speedFactor != 1.0f && this->timer > 0) {
+            this->timer = (s16)(this->timer / speedFactor);
+        }
         if (this->floorBgIds[this->highestFloor] == BGCHECK_SCENE) {
             ObjOshihiki_SetupOnScene(this, play);
         } else {

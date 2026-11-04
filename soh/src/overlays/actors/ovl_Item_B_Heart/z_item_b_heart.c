@@ -5,6 +5,7 @@
  */
 
 #include "z_item_b_heart.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "objects/object_gi_hearts/object_gi_hearts.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 
@@ -40,7 +41,9 @@ static InitChainEntry sInitChain[] = {
 void ItemBHeart_Init(Actor* thisx, PlayState* play) {
     ItemBHeart* this = (ItemBHeart*)thisx;
 
-    if (GameInteractor_Should(VB_ITEM_B_HEART_DESPAWN, Flags_GetCollectible(play, 0x1F), this)) {
+    s32 worldCheck = LocalWorldShuffle_HasCheck(&this->actor, play, this->actor.params);
+    if (worldCheck ? LocalWorldShuffle_IsCollected(&this->actor, play, this->actor.params) :
+        GameInteractor_Should(VB_ITEM_B_HEART_DESPAWN, Flags_GetCollectible(play, 0x1F), this)) {
         Actor_Kill(&this->actor);
     } else {
         Actor_ProcessInitChain(&this->actor, sInitChain);
@@ -56,6 +59,9 @@ void ItemBHeart_Update(Actor* thisx, PlayState* play) {
 
     func_80B85264(this, play);
     Actor_UpdateBgCheckInfo(play, &this->actor, 0.0f, 0.0f, 0.0f, 4);
+    if (LocalWorldShuffle_OfferPickup(&this->actor, play, this->actor.params)) {
+        return;
+    }
     if (Actor_HasParent(&this->actor, play)) {
         Flags_SetCollectible(play, 0x1F);
         Actor_Kill(&this->actor);
@@ -82,6 +88,9 @@ void ItemBHeart_Draw(Actor* thisx, PlayState* play) {
     Actor* actorIt;
     u8 flag = false;
 
+    if (LocalWorldShuffle_DrawPickup(&this->actor, play, this->actor.params)) {
+        return;
+    }
     OPEN_DISPS(play->state.gfxCtx);
 
     actorIt = play->actorCtx.actorLists[ACTORCAT_ITEMACTION].head;

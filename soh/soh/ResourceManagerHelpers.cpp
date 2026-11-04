@@ -174,7 +174,7 @@ u32 IsSceneMasterQuest(s16 sceneNum) {
             return true;
         }
 
-        if (IS_MASTER_QUEST) {
+        if (IS_MASTER_QUEST || (IS_LOCAL_WORLD_SHUFFLE && gSaveContext.ship.localWorldShuffle.masterQuest)) {
             return true;
         }
 
@@ -599,10 +599,58 @@ extern "C" int ResourceMgr_OTRSigCheck(char* imgData) {
     return 0;
 }
 
+// Mo's Custom: the MM running-jump pair is controlled independently of global Alt Assets.
+// Load by exact archive path so neither the global setting nor its cache redirects the choice.
+extern "C" bool ResourceMgr_HasMoJumpFlipAssets() {
+    return ResourceMgr_FileAltExists("objects/gameplay_keep/gPlayerAnim_link_normal_run_jump") &&
+           ResourceMgr_FileAltExists("objects/gameplay_keep/gPlayerAnim_link_normal_run_jump_end") &&
+           ResourceMgr_FileAltExists("misc/link_animetion/mmjumps_somersault_jump_data") &&
+           ResourceMgr_FileAltExists("misc/link_animetion/mmjumps_somersault_land_data");
+}
+
+extern "C" const char* ResourceMgr_GetMoNaviLabel(bool japanese) {
+    const char* original = japanese ? "__OTR__textures/parameter_static/gNaviCUpJPTex"
+                                   : "__OTR__textures/parameter_static/gNaviCUpENGTex";
+    if (!ResourceMgr_FileAltExists(original)) return original;
+    return japanese ? "__OTR__alt/textures/parameter_static/gNaviCUpJPTex"
+                    : "__OTR__alt/textures/parameter_static/gNaviCUpENGTex";
+}
+
+static AnimationHeaderCommon* Mo_LoadJumpFlipAnimation(const char* path) {
+    if (path == nullptr) return nullptr;
+    std::string key(path);
+    if (key.starts_with("__OTR__")) key.erase(0, 7);
+    if (key != "objects/gameplay_keep/gPlayerAnim_link_normal_run_jump" &&
+        key != "objects/gameplay_keep/gPlayerAnim_link_normal_run_jump_end") {
+        return nullptr;
+    }
+
+    auto manager = Ship::Context::GetRawInstance()->GetResourceManager();
+    const bool enabled = CVarGetInteger(CVAR_ENHANCEMENT("MoMMJumpFlips"), 0) != 0 &&
+                         ResourceMgr_HasMoJumpFlipAssets();
+    if (enabled) {
+        auto alt = manager->LoadResource("alt/" + key, true);
+        if (alt != nullptr) {
+            auto* header = reinterpret_cast<AnimationHeaderCommon*>(alt->GetRawPointer());
+            if (header != nullptr && header->frameCount > 0) return header;
+        }
+    }
+    auto original = manager->LoadResource(key, true);
+    return original ? reinterpret_cast<AnimationHeaderCommon*>(original->GetRawPointer()) : nullptr;
+}
+
 // Load animation with explicit alt asset path checking.
 // When Alt Assets is OFF: use original path directly (O2R or vanilla)
 // When Alt Assets is ON: try alt/ prefix first, fall back to regular path if not found or invalid
 extern "C" AnimationHeaderCommon* ResourceMgr_LoadAnimByName(const char* path) {
+    if (path != nullptr) {
+        std::string key(path);
+        if (key.starts_with("__OTR__")) key.erase(0, 7);
+        if (key == "objects/gameplay_keep/gPlayerAnim_link_normal_run_jump" ||
+            key == "objects/gameplay_keep/gPlayerAnim_link_normal_run_jump_end") {
+            return Mo_LoadJumpFlipAnimation(path);
+        }
+    }
     bool isAlt = ResourceMgr_IsAltAssetsEnabled();
 
     if (isAlt) {

@@ -17,6 +17,7 @@
 #include "soh_assets.h"
 #include "soh/Enhancements/boss-rush/BossRush.h"
 #include "soh/Enhancements/FileSelectEnhancements.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include <assert.h>
 #include "z64save.h"
@@ -26,9 +27,15 @@
 #include "soh/ResourceManagerHelpers.h"
 #include "soh/ShipUtils.h"
 #include <libultraship/bridge/consolevariablebridge.h>
+#include <libultraship/bridge/resourcebridge.h>
 
 #define MIN_QUEST (ResourceMgr_GameHasOriginal() ? QUEST_NORMAL : QUEST_MASTER)
-#define MAX_QUEST QUEST_BOSSRUSH
+
+static const ALIGN_ASSET(2) char sLocalItemShuffleSubtitleTex[] =
+    "__OTR__objects/object_mag/gTitleLocalItemShuffleSubtitleTex";
+static const ALIGN_ASSET(2) char sLocalItemShuffleSubtitleStandardTex[] =
+    "__OTR__objects/object_mag/gTitleLocalItemShuffleSubtitleStandardTex";
+#define MAX_QUEST QUEST_LOCAL_WORLD_SHUFFLE
 
 // #region SOH [Enhancement] - Hide Quest Modes
 // Step from quest in the given direction (1 or -1) to the next visible quest, wrapping around at the ends
@@ -93,6 +100,28 @@ void FileChoose_DrawImageRGBA32(GraphicsContext* gfxCtx, s16 centerX, s16 center
 
     gSPTextureRectangle(POLY_OPA_DISP++, rectLeft << 2, rectTop << 2, (rectLeft + (s32)width) << 2,
                         (rectTop + height) << 2, G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
+    CLOSE_DISPS(gfxCtx);
+}
+
+// Match the active texture mode while preserving the artwork's aspect ratio and alpha.
+static void FileChoose_DrawLocalShuffleSubtitle(GraphicsContext* gfxCtx, u8 alpha) {
+    const char* logo = ResourceMgr_GameHasOriginal() ? gTitleZeldaShieldLogoTex : gTitleZeldaShieldLogoMQTex;
+    // Alternate assets can remain enabled with Reloaded disabled. Match the
+    // resolved logo texture rather than the global alternate-assets preference.
+    const u16 logoWidth = ResourceGetTexWidthByName(logo);
+    const bool hdLogo = logoWidth > 160 && logoWidth != (u16)-1;
+    const char* texture = hdLogo ? sLocalItemShuffleSubtitleTex : sLocalItemShuffleSubtitleStandardTex;
+    OPEN_DISPS(gfxCtx);
+    Gfx_SetupDL_39Opa(gfxCtx);
+    gDPSetCombineMode(POLY_OPA_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+    gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, alpha);
+    gDPSetTileCustom(POLY_OPA_DISP++, G_IM_FMT_RGBA, G_IM_SIZ_32b, 128, 32, 0,
+                     G_TX_CLAMP, G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    gDPSetTextureImage(POLY_OPA_DISP++, G_IM_FMT_RGBA, G_IM_SIZ_32b, 128, texture);
+    gDPLoadSync(POLY_OPA_DISP++);
+    gDPLoadTile(POLY_OPA_DISP++, G_TX_LOADTILE, 0, 0, 127 << 2, 31 << 2);
+    gSPTextureRectangle(POLY_OPA_DISP++, 118 << 2, 158 << 2, 246 << 2, 201 << 2,
+                        G_TX_RENDERTILE, 0, 0, 1 << 10, (32 << 10) / 43);
     CLOSE_DISPS(gfxCtx);
 }
 
@@ -351,6 +380,16 @@ void DrawSeedHashSprites(FileChooseContext* this) {
                            xStart + (40 * i), 10, 24, 24);
             }
         }
+    }
+
+    if (this->selectedFileIndex < 3 && this->configMode == CM_MAIN_MENU &&
+        Save_GetSaveMetaInfo(this->selectedFileIndex)->localWorldShuffle &&
+        this->fileInfoAlpha[this->selectedFileIndex] > 0) {
+        Interface_DrawTextLine(this->state.gfxCtx, "Local Item Shuffle", 84, 12, 255, 255, 255,
+                               this->fileInfoAlpha[this->selectedFileIndex], 0.8f, true);
+        Interface_DrawTextLine(this->state.gfxCtx,
+            LocalWorldShuffle_RatingName(Save_GetSaveMetaInfo(this->selectedFileIndex)->localWorldSeedRating),
+            84, 26, 220, 220, 220, this->fileInfoAlpha[this->selectedFileIndex], 0.65f, true);
     }
 
     // Draw Seed Icons for spoiler log:
@@ -684,6 +723,108 @@ void FileChoose_StartRandomizerMenu(GameState* thisx) {
     }
 }
 
+static u8 sLocalShuffleReviewIndex = 1;
+
+static void FileChoose_LocalShuffleSound(u16 sound) {
+    Audio_PlaySfxGeneral(sound, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
+                         &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
+}
+
+static void FileChoose_RejectLocalSeed(FileChooseContext* this) {
+    LocalWorldShuffle_CancelSeedReview();
+    FileChoose_LocalShuffleSound(NA_SE_SY_FSEL_CLOSE);
+    CVarSetInteger(CVAR_GENERAL("OnFileSelectNameEntry"), 0);
+    this->configMode = CM_RANDOMIZER_SETTINGS_MENU;
+    this->randomizerIndex = 1;
+    this->randomizerUIAlpha = 255;
+    sLocalShuffleReviewIndex = 1;
+}
+
+static void FileChoose_UpdateLocalShuffleMenu(FileChooseContext* this) {
+    if (LocalWorldShuffle_IsGenerating()) {
+        const s32 result = LocalWorldShuffle_PollGeneration();
+        if (result != 0) {
+            if (result > 0) {
+                u16 fanfare = NA_BGM_SMALL_ITEM_GET;
+                switch (LocalWorldShuffle_ReviewedSeedRating()) {
+                    case LOCAL_WORLD_RATING_STANDARD:
+                        fanfare = NA_BGM_HEART_GET;
+                        break;
+                    case LOCAL_WORLD_RATING_TRICKY:
+                        fanfare = NA_BGM_ITEM_GET;
+                        break;
+                    case LOCAL_WORLD_RATING_GLITCHES:
+                        fanfare = NA_BGM_APPEAR;
+                        break;
+                    case LOCAL_WORLD_RATING_UNVERIFIED:
+                    default:
+                        break;
+                }
+                Audio_PlayFanfare(fanfare);
+            } else {
+                Sfx_PlaySfxCentered(NA_SE_SY_OCARINA_ERROR);
+            }
+            Audio_PlaySequenceWithSeqPlayerIO(SEQ_PLAYER_BGM_MAIN, NA_BGM_FILE_SELECT, 0, 7, 1);
+        }
+        return;
+    }
+    Input* input = &this->state.input[0];
+    const bool review = LocalWorldShuffle_SeedReviewPending();
+    u8* selection = review ? &sLocalShuffleReviewIndex : &this->randomizerIndex;
+    const s16 count = review ? 2 : 3;
+    const bool dpad = CVarGetInteger(CVAR_SETTING("DpadInText"), 0);
+    this->randomizerUIAlpha = MIN(this->randomizerUIAlpha + 25, 255);
+    if (ABS(this->stickRelY) > 30 || (dpad && CHECK_BTN_ANY(input->press.button, BTN_DDOWN | BTN_DUP))) {
+        const s16 direction = this->stickRelY < -30 || CHECK_BTN_ALL(input->press.button, BTN_DDOWN) ? 1 : -1;
+        *selection = (*selection + direction + count) % count;
+        FileChoose_LocalShuffleSound(NA_SE_SY_FSEL_CURSOR);
+    }
+    if (CHECK_BTN_ALL(input->press.button, BTN_B)) {
+        if (review) {
+            FileChoose_RejectLocalSeed(this);
+        } else {
+            LocalWorldShuffle_CancelSeedReview();
+            FileChoose_LocalShuffleSound(NA_SE_SY_FSEL_CLOSE);
+            this->configMode = CM_RANDOMIZER_SETTINGS_MENU_TO_QUEST;
+        }
+        return;
+    }
+    if (!CHECK_BTN_ALL(input->press.button, BTN_A)) return;
+    if (review) {
+        LocalWorldShuffle_ChooseSeedReview(sLocalShuffleReviewIndex == 0);
+        const s32 result = LocalWorldShuffle_PollSeedReview();
+        if (result == 2) {
+            FileChoose_RejectLocalSeed(this);
+        } else if (result == 1) {
+            FileChoose_LocalShuffleSound(NA_SE_SY_FSEL_DECIDE_L);
+            this->randomizerIndex = 0;
+        }
+        return;
+    }
+    if (this->randomizerIndex == 1) {
+        // Discard any accepted candidate before requesting a different placement.
+        LocalWorldShuffle_CancelSeedReview();
+        gSaveContext.fileNum = this->buttonIndex;
+        FileChoose_LocalShuffleSound(NA_SE_SY_FSEL_DECIDE_L);
+        Sram_InitSave(this); // Stages a candidate; never writes a file before review/name entry.
+        if (LocalWorldShuffle_IsGenerating()) {
+            Audio_PlaySequenceWithSeqPlayerIO(SEQ_PLAYER_BGM_MAIN, NA_BGM_OPEN_TRE_BOX, 0, 7, -1);
+        }
+        sLocalShuffleReviewIndex = 1;
+    } else if (!LocalWorldShuffle_HasReviewedSeed()) {
+        FileChoose_LocalShuffleSound(NA_SE_SY_FSEL_ERROR);
+    } else if (this->randomizerIndex == 0) {
+        FileChoose_LocalShuffleSound(NA_SE_SY_FSEL_DECIDE_L);
+        this->prevConfigMode = this->configMode;
+        this->configMode = CM_ROTATE_TO_NAME_ENTRY;
+        CVarSetInteger(CVAR_GENERAL("OnFileSelectNameEntry"), 1);
+    } else {
+        FileChoose_LocalShuffleSound(NA_SE_SY_FSEL_DECIDE_L);
+        LocalWorldShuffle_ReopenSeedReview();
+        sLocalShuffleReviewIndex = 1;
+    }
+}
+
 void FileChoose_UpdateQuestMenu(GameState* thisx) {
     FileChoose_UpdateStickDirectionPromptAnim(thisx);
     FileChooseContext* this = (FileChooseContext*)thisx;
@@ -729,11 +870,16 @@ void FileChoose_UpdateQuestMenu(GameState* thisx) {
             this->prevConfigMode = this->configMode;
             this->configMode = CM_ROTATE_TO_BOSS_RUSH_MENU;
             return;
-        } else if (this->questType[this->buttonIndex] == QUEST_RANDOMIZER) {
+        } else if (this->questType[this->buttonIndex] == QUEST_RANDOMIZER ||
+                   this->questType[this->buttonIndex] == QUEST_LOCAL_WORLD_SHUFFLE) {
             Audio_PlaySfxGeneral(NA_SE_SY_FSEL_DECIDE_L, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
                                  &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
             this->prevConfigMode = this->configMode;
             this->configMode = CM_ROTATE_TO_RANDOMIZER_SETTINGS_MENU;
+            if (this->questType[this->buttonIndex] == QUEST_LOCAL_WORLD_SHUFFLE) {
+                LocalWorldShuffle_CancelSeedReview();
+                this->randomizerIndex = 1;
+            }
         } else {
             Audio_PlaySfxGeneral(NA_SE_SY_FSEL_DECIDE_L, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
                                  &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
@@ -758,6 +904,10 @@ void FileChoose_UpdateRandomizerMenu(GameState* thisx) {
     Input* input = &this->state.input[0];
     bool dpad = CVarGetInteger(CVAR_SETTING("DpadInText"), 0);
 
+    if (this->questType[this->buttonIndex] == QUEST_LOCAL_WORLD_SHUFFLE) {
+        FileChoose_UpdateLocalShuffleMenu(this);
+        return;
+    }
     FileChoose_UpdateRandomizer();
 
     if (generating) {
@@ -933,6 +1083,11 @@ void FileChoose_RotateToQuest(GameState* thisx) {
                 gSaveContext.ship.quest.id = this->questType[this->buttonIndex];
 
                 switch (this->questType[this->buttonIndex]) {
+                    case QUEST_LOCAL_WORLD_SHUFFLE:
+                        LocalWorldShuffle_CancelSeedReview();
+                        this->randomizerIndex = 1;
+                        this->configMode = CM_START_RANDOMIZER_SETTINGS_MENU;
+                        break;
                     case QUEST_RANDOMIZER:
                         this->configMode = CM_START_RANDOMIZER_SETTINGS_MENU;
                         break;
@@ -1684,6 +1839,65 @@ const char* FileChoose_GetSohOptionsTitleTexName(Language lang) {
  * Draw most window contents including buttons, labels, and icons.
  * Does not include anything from the keyboard and settings windows.
  */
+static void FileChoose_DrawLocalShuffleMenu(FileChooseContext* this) {
+    const bool review = LocalWorldShuffle_SeedReviewPending();
+    const bool ready = LocalWorldShuffle_HasReviewedSeed();
+    const bool busy = LocalWorldShuffle_IsGenerating();
+    const u8 alpha = this->randomizerUIAlpha;
+    const u8 selection = review ? sLocalShuffleReviewIndex : this->randomizerIndex;
+    const s16 firstY = review ? 177 : 80;
+    char seedText[32];
+    char ratingText[48];
+    OPEN_DISPS(this->state.gfxCtx);
+    if (review || ready) {
+        snprintf(seedText, sizeof(seedText), "Seed: %u", LocalWorldShuffle_ReviewedSeedNumber());
+        snprintf(ratingText, sizeof(ratingText), "Rating: %s",
+                 LocalWorldShuffle_RatingName(LocalWorldShuffle_ReviewedSeedRating()));
+    }
+    if (review) {
+        const u8 rating = LocalWorldShuffle_ReviewedSeedRating();
+        Interface_DrawTextLine(this->state.gfxCtx, seedText, 70, 76, 255, 255, 255, alpha, 0.7f, true);
+        Interface_DrawTextLine(this->state.gfxCtx, LocalWorldShuffle_RatingName(rating),
+                               70, 94, 255, 220, 100, alpha, 0.8f, true);
+        if (rating == LOCAL_WORLD_RATING_UNVERIFIED) {
+            Interface_DrawTextLine(this->state.gfxCtx, "Warning: This seed may be unbeatable",
+                                   70, 114, 255, 255, 255, alpha, 0.6f, true);
+            Interface_DrawTextLine(this->state.gfxCtx, "or require advanced glitches to finish.",
+                                   70, 126, 255, 255, 255, alpha, 0.6f, true);
+        } else {
+            Interface_DrawTextLine(this->state.gfxCtx, LocalWorldShuffle_ReviewDescription(rating),
+                                   70, 114, 255, 255, 255, alpha, 0.6f, true);
+        }
+        Interface_DrawTextLine(this->state.gfxCtx, "Do you want to continue?",
+                               70, 151, 255, 255, 255, alpha, 0.7f, true);
+    } else if (busy) {
+        Interface_DrawTextLine(this->state.gfxCtx, "Generating seed...",
+                               70, 145, 255, 255, 255, alpha, 0.65f, true);
+    } else if (ready) {
+        Interface_DrawTextLine(this->state.gfxCtx, seedText, 70, 145, 255, 255, 255, alpha, 0.65f, true);
+        Interface_DrawTextLine(this->state.gfxCtx, ratingText, 70, 160, 255, 255, 255, alpha, 0.65f, true);
+    } else {
+        Interface_DrawTextLine(this->state.gfxCtx, "Generate a seed to begin.",
+                               70, 145, 240, 80, 80, alpha, 0.7f, true);
+    }
+    for (u8 index = 0; index < (review ? 2 : 3); ++index) {
+        const char* label = review ? (index == 0 ? "Yes" : "No") :
+            (index == 0 ? "Start Local Item Shuffle" : index == 1 ? "Generate New Seed" : "Review Seed");
+        const bool enabled = !busy && (review || index == 1 || ready);
+        Interface_DrawTextLine(this->state.gfxCtx, label, 70, firstY + index * 16,
+                               enabled ? 255 : 100, enabled ? 255 : 100,
+                               !enabled ? 100 : selection == index ? 80 : 255, alpha, 0.8f, true);
+    }
+    Gfx_SetupDL_39Opa(this->state.gfxCtx);
+    gDPSetCombineMode(POLY_OPA_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+    gDPLoadTextureBlock(POLY_OPA_DISP++, gArrowCursorTex, G_IM_FMT_IA, G_IM_SIZ_8b, 16, 24, 0,
+                        G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 4, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    FileChoose_DrawTextRec(this->state.gfxCtx, this->stickRightPrompt.arrowColorR,
+                           this->stickRightPrompt.arrowColorG, this->stickRightPrompt.arrowColorB,
+                           alpha, 62, firstY + 5 + selection * 16, 0.42f, 0, 0, 1.0f, 1.0f);
+    CLOSE_DISPS(this->state.gfxCtx);
+}
+
 void FileChoose_DrawWindowContents(GameState* thisx) {
     FileChooseContext* this = (FileChooseContext*)thisx;
     s16 fileIndex;
@@ -1730,7 +1944,14 @@ void FileChoose_DrawWindowContents(GameState* thisx) {
     gSPVertex(POLY_OPA_DISP++, this->windowContentVtx, 4, 0);
     gDPLoadTextureBlock(POLY_OPA_DISP++, tex, G_IM_FMT_IA, G_IM_SIZ_8b, 128, 16, 0, G_TX_NOMIRROR | G_TX_WRAP,
                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-    gSP1Quadrangle(POLY_OPA_DISP++, 0, 2, 3, 1, 0);
+    if (this->configMode == CM_RANDOMIZER_SETTINGS_MENU &&
+        this->questType[this->buttonIndex] == QUEST_LOCAL_WORLD_SHUFFLE &&
+        LocalWorldShuffle_SeedReviewPending()) {
+        Interface_DrawTextLine(this->state.gfxCtx, "Review Seed", 64, 43,
+                               255, 255, 255, this->titleAlpha[0], 0.8f, true);
+    } else {
+        gSP1Quadrangle(POLY_OPA_DISP++, 0, 2, 3, 1, 0);
+    }
 
     // draw next title label
     if ((this->configMode == CM_QUEST_MENU) || (this->configMode == CM_START_QUEST_MENU) ||
@@ -1810,6 +2031,15 @@ void FileChoose_DrawWindowContents(GameState* thisx) {
                 }
                 break;
 
+            case QUEST_LOCAL_WORLD_SHUFFLE:
+                gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, this->logoAlpha);
+                FileChoose_DrawTextureI8(this->state.gfxCtx, gTitleTheLegendOfTextTex, 72, 8, 156, 108, 72, 8, 1024, 1024);
+                FileChoose_DrawTextureI8(this->state.gfxCtx, gTitleOcarinaOfTimeTMTextTex, 96, 8, 154, 163, 96, 8, 1024, 1024);
+                FileChoose_DrawImageRGBA32(this->state.gfxCtx, 160, 135,
+                    ResourceMgr_GameHasOriginal() ? gTitleZeldaShieldLogoTex : gTitleZeldaShieldLogoMQTex, 160, 160);
+                FileChoose_DrawLocalShuffleSubtitle(this->state.gfxCtx, this->logoAlpha);
+                break;
+
             case QUEST_RANDOMIZER:
                 gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, this->logoAlpha);
                 FileChoose_DrawTextureI8(this->state.gfxCtx, gTitleTheLegendOfTextTex, 72, 8, 156, 108, 72, 8, 1024,
@@ -1837,6 +2067,9 @@ void FileChoose_DrawWindowContents(GameState* thisx) {
     } else if (this->configMode == CM_BOSS_RUSH_MENU) {
         FileChoose_DrawBossRushMenuWindowContents(this);
     } else if (this->configMode == CM_RANDOMIZER_SETTINGS_MENU) {
+        if (this->questType[this->buttonIndex] == QUEST_LOCAL_WORLD_SHUFFLE) {
+            FileChoose_DrawLocalShuffleMenu(this);
+        } else {
         uint8_t language = (gSaveContext.language == LANGUAGE_JPN) ? LANGUAGE_ENG : gSaveContext.language;
         uint8_t textAlpha = this->randomizerUIAlpha;
 
@@ -1885,7 +2118,7 @@ void FileChoose_DrawWindowContents(GameState* thisx) {
         FileChoose_DrawTextRec(this->state.gfxCtx, this->stickRightPrompt.arrowColorR,
                                this->stickRightPrompt.arrowColorG, this->stickRightPrompt.arrowColorB, textAlpha, 62,
                                (85 + textOffset), 0.42f, 0, 0, 1.0f, 1.0f);
-
+        }
     } else if (this->configMode != CM_ROTATE_TO_NAME_ENTRY && this->configMode != CM_START_BOSS_RUSH_MENU &&
                this->configMode != CM_ROTATE_TO_BOSS_RUSH_MENU && this->configMode != CM_BOSS_RUSH_TO_QUEST &&
                this->configMode != CM_START_RANDOMIZER_SETTINGS_MENU &&
@@ -2534,7 +2767,8 @@ void FileChoose_LoadGame(GameState* thisx) {
     gSaveContext.gameMode = GAMEMODE_NORMAL;
     Randomizer_WaitForGeneration();
 
-    if ((this->buttonIndex == FS_BTN_SELECT_FILE_1 && CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0)) ||
+    if ((this->buttonIndex == FS_BTN_SELECT_FILE_1 && CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0) &&
+         !Save_GetSaveMetaInfo(this->buttonIndex)->localWorldShuffle) ||
         this->buttonIndex == 0xFF) {
         if (this->buttonIndex == 0xFF) {
             Sram_InitDebugSave();
@@ -3122,6 +3356,7 @@ void FileChoose_InitContext(GameState* thisx) {
 }
 
 void FileChoose_Destroy(GameState* thisx) {
+    LocalWorldShuffle_CancelSeedReview();
 }
 
 void FileChoose_Init(GameState* thisx) {

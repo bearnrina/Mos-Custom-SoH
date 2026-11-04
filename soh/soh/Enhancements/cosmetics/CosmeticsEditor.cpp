@@ -440,7 +440,7 @@ static const char* MarginCvarList[]{
     CVAR_COSMETIC("HUD.Hearts"),        CVAR_COSMETIC("HUD.HeartsCount"),    CVAR_COSMETIC("HUD.MagicBar"),
     CVAR_COSMETIC("HUD.VisualSoA"),     CVAR_COSMETIC("HUD.BButton"),        CVAR_COSMETIC("HUD.AButton"),
     CVAR_COSMETIC("HUD.StartButton"),   CVAR_COSMETIC("HUD.CUpButton"),      CVAR_COSMETIC("HUD.CDownButton"),
-    CVAR_COSMETIC("HUD.CLeftButton"),   CVAR_COSMETIC("HUD.CRightButton"),   CVAR_COSMETIC("HUD.Dpad"),       CVAR_COSMETIC("HUD.NaviDpad"),
+    CVAR_COSMETIC("HUD.CLeftButton"),   CVAR_COSMETIC("HUD.CRightButton"),   CVAR_COSMETIC("HUD.Dpad"),       CVAR_COSMETIC("HUD.NaviDpad"), CVAR_COSMETIC("HUD.EquipmentDpad"),
     CVAR_COSMETIC("HUD.Minimap"),       CVAR_COSMETIC("HUD.SmallKey"),       CVAR_COSMETIC("HUD.Rupees"),
     CVAR_COSMETIC("HUD.Carrots"),       CVAR_COSMETIC("HUD.Timers"),         CVAR_COSMETIC("HUD.ArcheryScore"),
     CVAR_COSMETIC("HUD.TitleCard.Map"), CVAR_COSMETIC("HUD.TitleCard.Boss"), CVAR_COSMETIC("HUD.IGT"),
@@ -1770,6 +1770,25 @@ void Draw_Placements() {
                 minX = static_cast<s16>(ImGui::GetWindowViewport()->Size.x / 2) * -1;
             }
             DrawPositionSlider(CVAR_COSMETIC("HUD.NaviDpad"), 0,
+                               static_cast<s16>(ImGui::GetWindowViewport()->Size.y / 2), minX, maxX);
+            ImGui::EndTable();
+        }
+    }
+    if (CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0) &&
+        ImGui::CollapsingHeader("Equipment D-Pad indicator position")) {
+        if (ImGui::BeginTable("tableequipmentdpad", 1, FlagsTable)) {
+            ImGui::TableSetupColumn("Equipment indicator settings", FlagsCell, TablesCellsWidth);
+            Table_InitHeader(false);
+            DrawUseMarginsSlider("Equipment indicator", CVAR_COSMETIC("HUD.EquipmentDpad"));
+            DrawPositionsRadioBoxes(CVAR_COSMETIC("HUD.EquipmentDpad"));
+            s16 minX = 0;
+            s16 maxX = static_cast<s16>(ImGui::GetWindowViewport()->Size.x / 2);
+            if (CVarGetInteger(CVAR_COSMETIC("HUD.EquipmentDpad.PosType"), 0) == ANCHOR_RIGHT) {
+                maxX = 290;
+            } else if (CVarGetInteger(CVAR_COSMETIC("HUD.EquipmentDpad.PosType"), 0) == HIDDEN) {
+                minX = static_cast<s16>(ImGui::GetWindowViewport()->Size.x / 2) * -1;
+            }
+            DrawPositionSlider(CVAR_COSMETIC("HUD.EquipmentDpad"), 0,
                                static_cast<s16>(ImGui::GetWindowViewport()->Size.y / 2), minX, maxX);
             ImGui::EndTable();
         }

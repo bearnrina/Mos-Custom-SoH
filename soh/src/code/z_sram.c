@@ -8,6 +8,7 @@
 #include "soh/Enhancements/randomizer/savefile.h"
 #include "soh/OTRGlobals.h"
 #include "soh/SaveManager.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "soh/ResourceManagerHelpers.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
@@ -227,13 +228,21 @@ void Sram_OpenSave() {
     gSaveContext.magicLevel = 0;
 }
 
-void Sram_InitSave(FileChooseContext* fileChooseCtx) {
+s32 Sram_InitSave(FileChooseContext* fileChooseCtx) {
     u16 offset;
     u16 j;
     u16* ptr;
     u16 checksum;
 
-    if (fileChooseCtx->buttonIndex != 0 || !CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0)) {
+    const u16 titleDayTime = gSaveContext.dayTime;
+    if (fileChooseCtx->questType[fileChooseCtx->buttonIndex] == QUEST_LOCAL_WORLD_SHUFFLE) {
+        if (LocalWorldShuffle_HasReviewedSeed()) {
+            return LocalWorldShuffle_CommitReviewedSeed(Save_GetSaveMetaInfo(fileChooseCtx->buttonIndex)->playerName);
+        }
+        LocalWorldShuffle_PrepareSeedReview();
+    }
+    if (fileChooseCtx->questType[fileChooseCtx->buttonIndex] == QUEST_LOCAL_WORLD_SHUFFLE ||
+        fileChooseCtx->buttonIndex != 0 || !CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0)) {
         Sram_InitNewSave();
     } else {
         Sram_InitDebugSave();
@@ -250,7 +259,8 @@ void Sram_InitSave(FileChooseContext* fileChooseCtx) {
             (gSaveContext.language == LANGUAGE_JPN) ? NAME_LANGUAGE_NTSC_JPN : NAME_LANGUAGE_NTSC_ENG;
     }
 
-    if ((fileChooseCtx->buttonIndex == 0 && CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0))) {
+    if (fileChooseCtx->questType[fileChooseCtx->buttonIndex] != QUEST_LOCAL_WORLD_SHUFFLE &&
+        (fileChooseCtx->buttonIndex == 0 && CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0))) {
         gSaveContext.cutsceneIndex = 0;
     }
 
@@ -269,7 +279,8 @@ void Sram_InitSave(FileChooseContext* fileChooseCtx) {
     } else {
         gSaveContext.ship.quest.id = currentQuest;
         if (currentQuest != QUEST_RANDOMIZER &&
-            !(fileChooseCtx->buttonIndex == 0 && CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0))) {
+            !(fileChooseCtx->questType[fileChooseCtx->buttonIndex] != QUEST_LOCAL_WORLD_SHUFFLE &&
+              fileChooseCtx->buttonIndex == 0 && CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0))) {
             s32 startingHearts = CVarGetInteger(CVAR_ENHANCEMENT("StartingHearts"), 3);
 
             if (startingHearts < 1) {
@@ -284,8 +295,17 @@ void Sram_InitSave(FileChooseContext* fileChooseCtx) {
         }
     }
 
+    if (IS_LOCAL_WORLD_SHUFFLE) {
+        if (!LocalWorldShuffle_Create()) {
+            LocalWorldShuffle_CancelSeedReview();
+            return false;
+        }
+        LocalWorldShuffle_BeginSeedReview(titleDayTime);
+        return false;
+    }
     Save_SaveFile();
     SaveManager_ThreadPoolWait();
+    return true;
 }
 
 void Sram_InitSram(GameState* gameState) {

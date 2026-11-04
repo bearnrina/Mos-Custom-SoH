@@ -145,7 +145,7 @@ void BuildCustomItemMessage(Player* player, CustomMessage& msg) {
     }
     CustomMessage name =
         CustomMessage(Rando::StaticData::RetrieveItem(static_cast<RandomizerGet>(rgid)).GetName(), TEXTBOX_TYPE_BLUE);
-    if (rgid == RG_OPEN_CHEST &&
+    if (IS_RANDO && rgid == RG_OPEN_CHEST &&
         OTRGlobals::Instance->gRandoContext->GetOption(RSK_SHUFFLE_OPEN_CHEST).Is(RO_OPEN_CHEST_PROGRESSIVE)) {
         // message is built before the item is given, so the flags still say which copy this is
         name = Flags_GetRandomizerInf(RAND_INF_CAN_OPEN_CHEST)
@@ -220,11 +220,30 @@ void DrawCustomItemIcon(Gfx** p) {
     *p = gfx;
 }
 
+// Local shuffle reuses item-table identities, but not Randomizer seed settings.
+static bool IsLocalWorldCustomItem() {
+    if (!IS_LOCAL_WORLD_SHUFFLE || gPlayState == nullptr) return false;
+    const auto& entry = GET_PLAYER(gPlayState)->getItemEntry;
+    return entry.modIndex == MOD_RANDOMIZER && entry.textId == TEXT_RANDOMIZER_CUSTOM_ITEM &&
+           entry.getItemId > RG_NONE && entry.getItemId < RG_MAX;
+}
+
+static bool IsLocalWorldCustomItemIcon() {
+    if (!IsLocalWorldCustomItem()) return false;
+    const auto item = static_cast<RandomizerGet>(GET_PLAYER(gPlayState)->getItemEntry.getItemId);
+    return Rando::StaticData::RetrieveItem(item).HasCustomIcon();
+}
+
 void BuildItemMessage(u16* textId, bool* loadFromMessageTable) {
     Player* player = GET_PLAYER(gPlayState);
     CustomMessage msg;
 
-    if (player->getItemEntry.getItemId == RG_ICE_TRAP) {
+    if (IS_LOCAL_WORLD_SHUFFLE) {
+        if (!IsLocalWorldCustomItem()) return;
+        // Use the static item name/article/icon without Randomizer-only hints,
+        // Triforce goals, trap disguises, or dungeon-layout settings.
+        BuildCustomItemMessage(player, msg);
+    } else if (player->getItemEntry.getItemId == RG_ICE_TRAP) {
         Rando::Traps::BuildIceTrapMessage(msg, player->getItemEntry);
     } else if (player->getItemEntry.getItemId == RG_TRIFORCE_PIECE) {
         BuildTriforcePieceMessage(msg);
@@ -326,7 +345,7 @@ void BuildSmallKeyMessage(uint16_t* textId, bool* loadFromMessageTable) {
 }
 
 void RegisterItemMessages() {
-    COND_ID_HOOK(OnOpenText, TEXT_RANDOMIZER_CUSTOM_ITEM, IS_RANDO, BuildItemMessage);
+    COND_ID_HOOK(OnOpenText, TEXT_RANDOMIZER_CUSTOM_ITEM, IS_RANDO || IS_LOCAL_WORLD_SHUFFLE, BuildItemMessage);
     COND_ID_HOOK(OnOpenText, TEXT_ITEM_DUNGEON_MAP, DUNGEON_ITEMS_CAN_BE_OUTSIDE_DUNGEON(RSK_SHUFFLE_MAPANDCOMPASS),
                  BuildMapMessage);
     COND_ID_HOOK(OnOpenText, TEXT_ITEM_COMPASS, DUNGEON_ITEMS_CAN_BE_OUTSIDE_DUNGEON(RSK_SHUFFLE_MAPANDCOMPASS),
@@ -344,13 +363,13 @@ void RegisterItemMessages() {
 static RegisterShipInitFunc initFunc(RegisterItemMessages, { "IS_RANDO" });
 
 void RegisterCustomIconHooks() {
-    COND_VB_SHOULD(VB_LOAD_ITEM_ICON, IS_RANDO, {
-        if (*should == false) {
+    COND_VB_SHOULD(VB_LOAD_ITEM_ICON, IS_RANDO || IS_LOCAL_WORLD_SHUFFLE, {
+        if (*should == false && (IS_RANDO || IsLocalWorldCustomItemIcon())) {
             LoadCustomItemIcon(static_cast<bool>(va_arg(args, int)));
         }
     });
-    COND_VB_SHOULD(VB_DRAW_ITEM_ICON, IS_RANDO, {
-        if (*should == false) {
+    COND_VB_SHOULD(VB_DRAW_ITEM_ICON, IS_RANDO || IS_LOCAL_WORLD_SHUFFLE, {
+        if (*should == false && (IS_RANDO || IsLocalWorldCustomItemIcon())) {
             DrawCustomItemIcon(va_arg(args, Gfx**));
         }
     });

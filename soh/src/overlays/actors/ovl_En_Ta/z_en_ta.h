@@ -34,6 +34,7 @@ typedef struct EnTa {
     /* 0x02E0 */ u16 stateFlags;
     /* 0x02E2 */ s16 nodOffTimer;
     /* 0x02E4 */ AnimationHeader* currentAnimation;
-} EnTa; // size = 0x02E8
+    u8 localWorldMilkPrize; // Separates a minigame refill from an ordinary milk purchase.
+} EnTa; // Extended by local-mode prize state.
 
 #endif

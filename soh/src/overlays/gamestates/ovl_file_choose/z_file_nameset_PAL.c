@@ -6,6 +6,7 @@
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 #include "soh/SaveManager.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 static s16 D_808124C0[] = {
@@ -355,7 +356,7 @@ void FileChoose_DrawNameEntry(GameState* thisx) {
                       PRIMITIVE, 0);
     gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, 255);
 
-    if (this->configMode == CM_NAME_ENTRY) {
+    if (this->configMode == CM_NAME_ENTRY && !LocalWorldShuffle_SeedReviewPending()) {
         if (CHECK_BTN_ALL(input->press.button, BTN_START)) {
             Audio_PlaySfxGeneral(NA_SE_SY_FSEL_DECIDE_L, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
                                  &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
@@ -459,7 +460,10 @@ void FileChoose_DrawNameEntry(GameState* thisx) {
                                                  &gSfxDefaultReverb);
                             gSaveContext.fileNum = this->buttonIndex;
                             dayTime = ((void)0, gSaveContext.dayTime);
-                            Sram_InitSave(this);
+                            if (!Sram_InitSave(this)) {
+                                gSaveContext.dayTime = dayTime;
+                                return;
+                            }
                             gSaveContext.dayTime = dayTime;
                             this->prevConfigMode = CM_MAIN_MENU;
                             this->configMode = CM_NAME_ENTRY_TO_MAIN;

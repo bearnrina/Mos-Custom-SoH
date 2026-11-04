@@ -9,6 +9,7 @@
 #include <ship/Context.h>
 
 #include "randomizer.h"
+#include "LocalWorldShuffle.h"
 #include "3drando/menu.hpp"
 #include "soh/ResourceManagerHelpers.h"
 #include "soh/SohGui/SohGui.hpp"
@@ -975,7 +976,7 @@ bool IsRandoGenerating() {
 }
 
 bool GenerateRandomizer(std::string seed /*= ""*/) {
-    if (randoGenerating) {
+    if (randoGenerating || LocalWorldShuffle_IsGenerating()) {
         return false;
     }
     WaitForRandoGeneration();

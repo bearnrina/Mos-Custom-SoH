@@ -659,17 +659,16 @@ size_t BankHylia_GetMessage(u16 textId, char* buffer, size_t bufferSize) {
             text = "Welcome to Bank Hylia!" BANK_NL
                    "A new customer! Your Rupees" BANK_NL
                    "will be safe with us." BANK_PAGE
-                   "For a limited time, we're testing" BANK_NL
-                   "a new concept called interest." BANK_PAGE
-                   "For every year you keep your" BANK_NL
-                   "money here, you earn" BANK_NL
-                   "10% interest!" BANK_PAGE
-                   "The only catch is it cannot be" BANK_NL
-                   "withdrawn for at least 3 years!" BANK_EVENT;
+                   "Deposit your Rupees now, and" BANK_NL
+                   "we'll double your childhood" BANK_NL
+                   "savings when you return" BANK_NL
+                   "as an adult!" BANK_PAGE
+                   "Until then, withdrawals" BANK_NL
+                   "are unavailable." BANK_EVENT;
             break;
         case BANK_HYLIA_TEXT_CHILD_OFFER:
             text = "Would you like to participate" BANK_NL
-                   "in our interest program?" BANK_NL BANK_CHOICE_2
+                   "in our banking program?" BANK_NL BANK_CHOICE_2
                    "Yes" BANK_NL "No" BANK_END;
             break;
         case BANK_HYLIA_TEXT_CHILD_DECLINE:
@@ -683,13 +682,13 @@ size_t BankHylia_GetMessage(u16 textId, char* buffer, size_t bufferSize) {
                 bank->flags |= BANK_HYLIA_ADULT_ENROLLED;
             }
             text = bank->childhoodAdultValue != 0
-                       ? "Wait...is that really you?!" BANK_NL
+                       ? "Wait... is that really you?!" BANK_NL
                          "You've grown so much! Welcome" BANK_NL
                          "back to Bank Hylia!" BANK_PAGE
                          "It's been 7 long years!" BANK_NL
                          "Your childhood savings are now" BANK_NL
                          "worth twice as much!" BANK_EVENT
-                       : "Wait...is that really you?!" BANK_NL
+                       : "Wait... is that really you?!" BANK_NL
                          "You've grown so much! Welcome" BANK_NL
                          "back to Bank Hylia!" BANK_PAGE
                          "It's been 7 long years!" BANK_EVENT;
@@ -715,11 +714,10 @@ size_t BankHylia_GetMessage(u16 textId, char* buffer, size_t bufferSize) {
         case BANK_HYLIA_TEXT_CHILD_CLOSURE:
             bank->flags |= BANK_HYLIA_CLOSURE_EXPLAINED;
             text = "Welcome back to Bank Hylia!" BANK_NL
-                   "We are no longer participating" BANK_NL
-                   "in the interest program." BANK_PAGE
-                   "Any savings you have with us" BANK_NL
-                   "will be available for withdrawal" BANK_NL
-                   "in 3 short years." BANK_EVENT;
+                   "We no longer accept deposits" BANK_NL
+                   "in this era." BANK_PAGE
+                   "Return as an adult to" BANK_NL
+                   "withdraw your savings." BANK_EVENT;
             break;
         case BANK_HYLIA_TEXT_GREETING:
             length = snprintf(buffer, bufferSize,
@@ -728,15 +726,15 @@ size_t BankHylia_GetMessage(u16 textId, char* buffer, size_t bufferSize) {
             return length > 0 && (size_t)length < bufferSize ? (size_t)length : 0;
         case BANK_HYLIA_TEXT_MENU:
             text = "What do you want to do?" BANK_NL BANK_CHOICE_3
-                   "Deposit all Rupees" BANK_NL
-                   "Withdraw / Fill wallet" BANK_NL
-                   "Do nothing" BANK_END;
+                   "Deposit All" BANK_NL
+                   "Fill Wallet" BANK_NL
+                   "Cancel" BANK_END;
             break;
         case BANK_HYLIA_TEXT_CHILD_MENU:
             text = "What do you want to do?" BANK_NL BANK_CHOICE_3
-                   "Deposit all Rupees" BANK_NL
-                   "Withdraw (unavailable)" BANK_NL
-                   "Do nothing" BANK_END;
+                   "Deposit All" BANK_NL
+                   "Withdraw (Unavailable)" BANK_NL
+                   "Cancel" BANK_END;
             break;
         case BANK_HYLIA_TEXT_FAREWELL:
             text = LINK_IS_ADULT ? "Good day, old friend!" BANK_END : "Good day, young sir!" BANK_END;

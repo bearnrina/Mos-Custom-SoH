@@ -18,6 +18,7 @@
 #include "soh/ActorDB.h"
 #include "soh/OTRGlobals.h"
 #include "soh/ShipUtils.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -2073,6 +2074,7 @@ s32 GiveItemEntryWithoutActor(PlayState* play, GetItemEntry getItemEntry) {
  * \return true if the player can receive an item, false if not.
  */
 s32 GiveItemEntryFromActor(Actor* actor, PlayState* play, GetItemEntry getItemEntry, f32 xzRange, f32 yRange) {
+    getItemEntry = LocalWorldShuffle_ResolveUpgrade(getItemEntry);
     Player* player = GET_PLAYER(play);
 
     if (!(player->stateFlags1 &
@@ -2135,6 +2137,13 @@ s32 Actor_OfferGetItem(Actor* actor, PlayState* play, s32 getItemId, f32 xzRange
                 s32 absYawDiff = ABS(yawDiff);
 
                 if ((getItemId != GI_NONE) || (player->getItemDirection < absYawDiff)) {
+                    if (IS_LOCAL_WORLD_SHUFFLE && getItemId > GI_NONE && getItemId < GI_MAX) {
+                        GetItemEntry entry = LocalWorldShuffle_ResolveUpgrade(ItemTable_Retrieve(getItemId));
+                        if (entry.getItemId != getItemId) {
+                            player->getItemEntry = entry;
+                            getItemId = entry.getItemId;
+                        }
+                    }
                     player->getItemId = getItemId;
                     player->interactRangeActor = actor;
                     player->getItemDirection = absYawDiff;

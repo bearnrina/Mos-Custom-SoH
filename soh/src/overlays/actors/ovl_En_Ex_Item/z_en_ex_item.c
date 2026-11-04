@@ -4,6 +4,7 @@
  * Description: Minigame prize items
  */
 
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_en_ex_item.h"
 #include "overlays/actors/ovl_En_Bom_Bowl_Pit/z_en_bom_bowl_pit.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
@@ -399,7 +400,7 @@ void EnExItem_TargetPrizeApproach(EnExItem* this, PlayState* play) {
         }
 
         if (GameInteractor_Should(VB_GIVE_ITEM_FROM_TARGET_IN_WOODS, true, &this->actor)) {
-            Actor_OfferGetItem(&this->actor, play, getItemId, 2000.0f, 1000.0f);
+            LocalWorldShuffle_OfferNpcPrize(&this->actor, play, RC_LW_TARGET_IN_WOODS, getItemId, 2000.0f, 1000.0f);
         }
 
         this->actionFunc = EnExItem_TargetPrizeGive;
@@ -409,10 +410,11 @@ void EnExItem_TargetPrizeApproach(EnExItem* this, PlayState* play) {
 void EnExItem_TargetPrizeGive(EnExItem* this, PlayState* play) {
     if (Actor_HasParent(&this->actor, play) ||
         !GameInteractor_Should(VB_GIVE_ITEM_FROM_TARGET_IN_WOODS, true, &this->actor)) {
+        LocalWorldShuffle_AcceptNpcPrize(&this->actor, play, RC_LW_TARGET_IN_WOODS);
         this->actionFunc = EnExItem_TargetPrizeFinish;
     } else {
         s32 getItemId = (CUR_UPG_VALUE(UPG_BULLET_BAG) == 2) ? GI_BULLET_BAG_50 : GI_BULLET_BAG_40;
-        Actor_OfferGetItem(&this->actor, play, getItemId, 2000.0f, 1000.0f);
+        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, RC_LW_TARGET_IN_WOODS, getItemId, 2000.0f, 1000.0f);
     }
 }
 

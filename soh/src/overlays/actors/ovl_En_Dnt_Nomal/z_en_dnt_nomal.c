@@ -4,6 +4,7 @@
  * Description: Lost Woods minigame scrubs
  */
 
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_en_dnt_nomal.h"
 #include "objects/object_dnk/object_dnk.h"
 #include "overlays/actors/ovl_En_Dnt_Demo/z_en_dnt_demo.h"
@@ -248,7 +249,9 @@ void EnDntNomal_TargetWait(EnDntNomal* this, PlayState* play) {
             Sfx_PlaySfxCentered(NA_SE_SY_TRE_BOX_APPEAR);
             // "Big hit"
             osSyncPrintf(VT_FGCOL(CYAN) "☆☆☆☆☆ 大当り ☆☆☆☆☆ %d\n" VT_RST, this->hitCounter);
-            if (!LINK_IS_ADULT && !Flags_GetItemGetInf(ITEMGETINF_1D)) {
+            if (!LINK_IS_ADULT && !(play->sceneNum == SCENE_LOST_WOODS ?
+                    LocalWorldShuffle_NpcCollected(RC_LW_TARGET_IN_WOODS, Flags_GetItemGetInf(ITEMGETINF_1D)) :
+                    Flags_GetItemGetInf(ITEMGETINF_1D))) {
                 this->hitCounter++;
                 if (this->hitCounter >= 3) {
                     if (!GameInteractor_Should(VB_PLAY_ONEPOINT_ACTOR_CS, true, &this->actor)) {

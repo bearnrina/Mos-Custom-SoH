@@ -192,7 +192,9 @@ void func_80A4E648(EnGs* this, PlayState* play) {
                     // if we're rando'd, always use the non-mask text id
                     this->actor.textId = 0x2053;
                 } else {
-                    if (Player_GetMask(play) == PLAYER_MASK_TRUTH) {
+                    if ((Player_GetMask(play) == PLAYER_MASK_TRUTH) ||
+                        (CVarGetInteger(CVAR_ENHANCEMENT("StoneOfAgonyGossipStones"), 0) &&
+                         CHECK_QUEST_ITEM(QUEST_STONE_OF_AGONY))) {
                         this->actor.textId = 0x2054;
                     } else {
                         this->actor.textId = 0x2053;

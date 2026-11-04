@@ -10,9 +10,11 @@
 #include "soh/Enhancements/custom-message/CustomMessageTypes.h"
 #include "soh/ShipInit.hpp"
 #include "soh/ShipUtils.h"
+#include "soh/OTRGlobals.h"
 
 extern "C" {
 #include <variables.h>
+#include "global.h"
 }
 
 static CustomMessage NaviMessages[] = {
@@ -118,71 +120,128 @@ static CustomMessage NaviMessages[] = {
       "Ils&sont efficaces contre tes ennemis!" }
 };
 
+// Save-scoped alternation: 0 = original quest hint, 1 = gameplay tip.
+// A pending hint advances only after its textbox enters the closing state.
+static bool sExpandedNaviPending = false;
+static uint16_t sExpandedNaviTextId = 0;
+
+extern "C" PlayState* gPlayState;
+
+static void OnExpandedNaviDialog() {
+    if (!sExpandedNaviPending || gPlayState == nullptr) {
+        return;
+    }
+    const MessageContext& msg = gPlayState->msgCtx;
+    if (msg.textId == sExpandedNaviTextId && msg.msgMode == MSGMODE_TEXT_CLOSING) {
+        gSaveContext.ship.expandedNaviNextHint ^= 1;
+        sExpandedNaviPending = false;
+    } else if (msg.msgLength == 0 || msg.msgMode == MSGMODE_NONE || msg.textId != sExpandedNaviTextId) {
+        // An interrupted or replaced conversation does not consume a turn.
+        sExpandedNaviPending = false;
+    }
+}
+
 void BuildNaviMessage(uint16_t* textId, bool* loadFromMessageTable) {
-    CustomMessage msg = ShipUtils::RandomElement(NaviMessages);
+    // Preserve the original Randomizer enhancement, including its full hint pool.
+    if (IS_RANDO) {
+        CustomMessage msg = ShipUtils::RandomElement(NaviMessages);
+        msg.AutoFormat();
+        msg.LoadIntoFont();
+        *loadFromMessageTable = false;
+        return;
+    }
+    if (!CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)) {
+        return;
+    }
+    sExpandedNaviTextId = *textId;
+    sExpandedNaviPending = true;
+    if (gSaveContext.ship.expandedNaviNextHint == 0) {
+        return; // Let the game's progression-aware original hint load normally.
+    }
+
+    // Gameplay-relevant entries only. Exclude seed/spoiler/shuffled-key and
+    // other Randomizer-specific advice from the vanilla quest.
+    static constexpr size_t gameplayHintIndices[] = {
+        1, 3, 4, 7, 9, 10, 12, 13
+    };
+    const size_t choice = static_cast<size_t>(Rand_ZeroFloat(ARRAY_COUNT(gameplayHintIndices)));
+    CustomMessage msg = NaviMessages[gameplayHintIndices[choice < ARRAY_COUNT(gameplayHintIndices) ? choice : 0]];
     msg.AutoFormat();
     msg.LoadIntoFont();
     *loadFromMessageTable = false;
 }
 
 void RegisterNaviMessages() {
+    sExpandedNaviPending = false;
+
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_DEKU_TREE_SUMMONS,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_CMON_BE_BRAVE,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_VISIT_THE_PRINCESS,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_FIND_MALONS_FATHER,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_FIND_THE_PRINCESS,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_WHAT_WOULD_SARIA_SAY,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_IMPA_SAID_DEATH_MOUNTAIN,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_USE_BOMB_FLOWER,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_FAIRY_LIVES_ON_DEATH_MOUNTAIN,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_SARIA_KNOWS_ABOUT_STONES,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_RUTO_INSIDE_JABUS_BELLY,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_COLLECTED_THREE_STONES,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_THREW_SOMETHING_IN_MOAT,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_CHECK_TEMPLE_OF_TIME,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_SHOULD_WE_BELIEVE_SHEIK,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_WHATS_GOING_ON_IN_FOREST,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_CLOUD_OVER_DEATH_MOUNTAIN,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_ARTIC_WIND_IS_BLOWING,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_IRON_BOOTS_WEIGH_A_TON,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_LOOK_FOR_SOMONE_WHO_KNOWS,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_IT_CAME_OUT_OF_THE_WELL,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_WHO_BUILT_THE_SPIRIT_TEMPLE,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_HAVE_YOU_EVER_PLAYED_NOCTURNE,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_WHERE_GANONDORF_WAS_BORN,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_EQUIP_THE_SILVER_GAUNTLETS,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_WHO_IS_WAITING_FOR_US,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_SAVE_PRINCESS_ZELDA,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
     COND_ID_HOOK(OnOpenText, TEXT_NAVI_TRY_TO_KEEP_MOVING,
-                 IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1), BuildNaviMessage);
+                 (IS_RANDO && CVarGetInteger(CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), 1)) || (!IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), 0)), BuildNaviMessage);
 }
 
 static RegisterShipInitFunc initFunc(RegisterNaviMessages,
-                                     { CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"), "IS_RANDO" });
+                                     { CVAR_RANDOMIZER_ENHANCEMENT("RandoRelevantNavi"),
+                                       CVAR_ENHANCEMENT("ExpandedNaviQuestHints"), "IS_RANDO" });
+
+static RegisterShipInitFunc expandedNaviObserver([]() {
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnDialogMessage>(OnExpandedNaviDialog);
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnLoadFile>([](int32_t) {
+        sExpandedNaviPending = false;
+    });
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnExitGame>([](int32_t) {
+        sExpandedNaviPending = false;
+    });
+});

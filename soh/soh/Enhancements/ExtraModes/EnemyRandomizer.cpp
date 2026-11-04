@@ -1242,20 +1242,6 @@ void RegisterEnemyRandomizerWidgets() {
             })
             .Callback([](WidgetInfo& info) { UpdateSelectedEnemies(); });
     }
-    SohGui::mSohMenu->AddWidget(path, "Item Randomizer", WIDGET_SEPARATOR_TEXT);
-    SohGui::mSohMenu->AddWidget(path, "Local Dungeon Item Shuffle", WIDGET_CVAR_CHECKBOX)
-        .CVar(CVAR_ENHANCEMENT("LocalDungeonItemShuffle"))
-        .PreFunc([](WidgetInfo& info) {
-            info.options->disabled = GameInteractor::IsSaveLoaded(true);
-            info.options->disabledTooltip = "Choose this before creating a new normal or Master Quest save. "
-                                            "Existing saves keep their original mode and chest placements.";
-        })
-        .Options(UIWidgets::CheckboxOptions().DefaultValue(false).Tooltip(
-            "Enable before creating a new normal or Master Quest save.\n"
-            "Shuffles each dungeon's chest rewards within that dungeon, keeping its exact original item pool.\n"
-            "Placements are checked with dungeon progression logic and stored in the save.\n"
-            "Boss rewards, loose pickups, pots and enemy drops stay unchanged.\n"
-            "Changing this setting later does not change existing saves. Randomizer saves use their own seed."));
     SohGui::mSohMenu->AddWidget(path, "Dungeon shuffle unavailable for this file.", WIDGET_TEXT)
         .PreFunc([](WidgetInfo& info) {
             info.isHidden = !GameInteractor::IsSaveLoaded(true) || IS_RANDO ||
@@ -1263,10 +1249,10 @@ void RegisterEnemyRandomizerWidgets() {
         });
 
     SohGui::mSohMenu->AddWidget(path, "Flow of Time", WIDGET_SEPARATOR_TEXT);
-    SohGui::mSohMenu->AddWidget(path, "Adjust speed of ingame time", WIDGET_CVAR_CHECKBOX)
+    SohGui::mSohMenu->AddWidget(path, "Adjust Day/Night Length", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("AdjustFlowOfTime"))
         .Options(UIWidgets::CheckboxOptions().DefaultValue(false).Tooltip(
-            "Use a custom duration for the day-night cycle in areas where time normally advances."));
+            "Sets day and night duration in real-world minutes. Only affects areas where time normally advances."));
     s32 previousCycleMinutes = CVarGetInteger(CVAR_ENHANCEMENT("TimeFlowCycleMinutes"), 10);
     if (previousCycleMinutes < 2) {
         previousCycleMinutes = 2;
@@ -1274,22 +1260,22 @@ void RegisterEnemyRandomizerWidgets() {
         previousCycleMinutes = 1440;
     }
     const s32 defaultPhaseMinutes = (previousCycleMinutes + 1) / 2;
-    SohGui::mSohMenu->AddWidget(path, "Day Cycle Length: %d minutes", WIDGET_CVAR_SLIDER_INT)
+    SohGui::mSohMenu->AddWidget(path, "Day Length: %d minutes", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_ENHANCEMENT("TimeFlowDayMinutes"))
         .PreFunc([](WidgetInfo& info) {
             info.options->disabled = !CVarGetInteger(CVAR_ENHANCEMENT("AdjustFlowOfTime"), 0);
-            info.options->disabledTooltip = "Amount of minutes it takes to complete one ingame day cycle.";
+            info.options->disabledTooltip = "Enable Adjust Day/Night Length.";
         })
         .Options(UIWidgets::IntSliderOptions().Min(1).Max(720).DefaultValue(defaultPhaseMinutes).Format("%d minutes").Tooltip(
-            "Amount of minutes it takes to complete one ingame day cycle."));
-    SohGui::mSohMenu->AddWidget(path, "Night Cycle Length: %d minutes", WIDGET_CVAR_SLIDER_INT)
+            "Real-world minutes from morning to night."));
+    SohGui::mSohMenu->AddWidget(path, "Night Length: %d minutes", WIDGET_CVAR_SLIDER_INT)
         .CVar(CVAR_ENHANCEMENT("TimeFlowNightMinutes"))
         .PreFunc([](WidgetInfo& info) {
             info.options->disabled = !CVarGetInteger(CVAR_ENHANCEMENT("AdjustFlowOfTime"), 0);
-            info.options->disabledTooltip = "Amount of minutes it takes to complete one ingame night cycle.";
+            info.options->disabledTooltip = "Enable Adjust Day/Night Length.";
         })
         .Options(UIWidgets::IntSliderOptions().Min(1).Max(720).DefaultValue(defaultPhaseMinutes).Format("%d minutes").Tooltip(
-            "Amount of minutes it takes to complete one ingame night cycle."));
+            "Real-world minutes from night to morning."));
 
 }
 

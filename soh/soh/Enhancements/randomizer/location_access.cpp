@@ -1,4 +1,5 @@
 #include "location_access.h"
+#include "LocalWorldShuffle.h"
 
 #include "soh/Enhancements/randomizer/static_data.h"
 #include "soh/Enhancements/randomizer/SeedContext.h"
@@ -48,10 +49,10 @@ bool LocationAccess::ConditionsMet(Region* parentRegion, bool calculatingAvailab
     // have any access at all just because this is being run
     bool conditionsMet = false;
 
-    if ((parentRegion->childDay && CheckConditionAtAgeTime(logic->IsChild, logic->AtDay)) ||
-        (parentRegion->childNight && CheckConditionAtAgeTime(logic->IsChild, logic->AtNight)) ||
-        (parentRegion->adultDay && CheckConditionAtAgeTime(logic->IsAdult, logic->AtDay)) ||
-        (parentRegion->adultNight && CheckConditionAtAgeTime(logic->IsAdult, logic->AtNight))) {
+    if ((parentRegion->childDay && LocalWorldShuffle_LogicAgeAllowed(location, 0) && CheckConditionAtAgeTime(logic->IsChild, logic->AtDay)) ||
+        (parentRegion->childNight && LocalWorldShuffle_LogicAgeAllowed(location, 0) && CheckConditionAtAgeTime(logic->IsChild, logic->AtNight)) ||
+        (parentRegion->adultDay && LocalWorldShuffle_LogicAgeAllowed(location, 1) && CheckConditionAtAgeTime(logic->IsAdult, logic->AtDay)) ||
+        (parentRegion->adultNight && LocalWorldShuffle_LogicAgeAllowed(location, 1) && CheckConditionAtAgeTime(logic->IsAdult, logic->AtNight))) {
         conditionsMet = true;
     }
 

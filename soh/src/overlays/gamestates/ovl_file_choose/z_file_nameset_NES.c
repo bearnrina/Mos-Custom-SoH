@@ -4,6 +4,7 @@
 #include "assets/soh_assets.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/SaveManager.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "soh/ResourceManagerHelpers.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
@@ -528,7 +529,7 @@ void FileChoose_DrawNameEntryNES(GameState* thisx) {
                       PRIMITIVE, 0);
     gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, 255);
 
-    if (this->configMode == CM_NAME_ENTRY) {
+    if (this->configMode == CM_NAME_ENTRY && !LocalWorldShuffle_SeedReviewPending()) {
         if (CHECK_BTN_ALL(input->press.button, BTN_START)) {
             Audio_PlaySfxGeneral(NA_SE_SY_FSEL_DECIDE_L, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
                                  &gSfxDefaultFreqAndVolScale, &gSfxDefaultReverb);
@@ -707,7 +708,10 @@ void FileChoose_DrawNameEntryNES(GameState* thisx) {
                                                      &gSfxDefaultReverb);
                                 gSaveContext.fileNum = this->buttonIndex;
                                 dayTime = ((void)0, gSaveContext.dayTime);
-                                Sram_InitSave(this);
+                                if (!Sram_InitSave(this)) {
+                                    gSaveContext.dayTime = dayTime;
+                                    return;
+                                }
                                 gSaveContext.dayTime = dayTime;
                                 this->prevConfigMode = CM_MAIN_MENU;
                                 this->configMode = CM_NAME_ENTRY_TO_MAIN;

@@ -63,6 +63,8 @@ SequenceData* ResourceMgr_LoadSeqPtrByName(const char* path);
 SoundFontSample* ResourceMgr_LoadAudioSample(const char* path);
 CollisionHeader* ResourceMgr_LoadColByName(const char* path);
 bool ResourceMgr_IsAltAssetsEnabled();
+bool ResourceMgr_HasMoJumpFlipAssets();
+const char* ResourceMgr_GetMoNaviLabel(bool japanese);
 SkeletonHeader* ResourceMgr_LoadSkeletonByName(const char* path, SkelAnime* skelAnime);
 void ResourceMgr_UnregisterSkeleton(SkelAnime* skelAnime);
 void ResourceMgr_ClearSkeletons();

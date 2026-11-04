@@ -13,6 +13,8 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 
 #include "SaveManager.h"
+#include "Enhancements/randomizer/LocalWorldShuffle.h"
+#include <stdexcept>
 #include <random>
 #include "OTRGlobals.h"
 #include "Enhancements/game-interactor/GameInteractor.h"
@@ -180,6 +182,42 @@ std::vector<RandomizerHint> Rando::StaticData::oldVerHintOrder{
 
 uint16_t Rando::StaticData::oldVerGossipStoneStart = 706;
 
+static void LoadLocalWorldShuffleSection(bool hasNpcPrizes) {
+    if (!IS_LOCAL_WORLD_SHUFFLE) return;
+    auto& data = gSaveContext.ship.localWorldShuffle;
+    SaveManager::Instance->LoadData("state", data.state);
+    SaveManager::Instance->LoadData("masterQuest", data.masterQuest);
+    SaveManager::Instance->LoadData("forestSwordQuest", data.forestSwordQuest);
+    SaveManager::Instance->LoadData("startingHearts", data.startingHearts);
+    SaveManager::Instance->LoadData("seed", data.seed);
+    SaveManager::Instance->LoadData("seedRating", data.seedRating);
+    SaveManager::Instance->LoadData("placementCount", data.placementCount);
+    if (data.placementCount > LOCAL_WORLD_SHUFFLE_MAX_CHECKS) {
+        throw std::runtime_error("Invalid local world shuffle placement count");
+    }
+    SaveManager::Instance->LoadArray("placements", data.placementCount, [&](size_t i) {
+        SaveManager::Instance->LoadStruct("", [&]() {
+            auto& placement = data.placements[i];
+            SaveManager::Instance->LoadData("check", placement.check);
+            SaveManager::Instance->LoadData("item", placement.item);
+            SaveManager::Instance->LoadData("collected", placement.collected);
+            SaveManager::Instance->LoadData("childAccessible", placement.childAccessible);
+            SaveManager::Instance->LoadData("adultAccessible", placement.adultAccessible);
+        });
+    });
+    data.npcPrizesEnabled = 0;
+    std::fill(std::begin(data.npcRepeatPrizes), std::end(data.npcRepeatPrizes), 0);
+    if (hasNpcPrizes) {
+        SaveManager::Instance->LoadData("npcPrizesEnabled", data.npcPrizesEnabled);
+        SaveManager::Instance->LoadArray("npcRepeatPrizes", LOCAL_WORLD_NPC_REPEAT_PRIZE_COUNT, [&](size_t i) {
+            SaveManager::Instance->LoadData("", data.npcRepeatPrizes[i]);
+        });
+    }
+    if (!LocalWorldShuffle_ValidateData(&data)) {
+        throw std::runtime_error("Invalid local world shuffle placement data");
+    }
+}
+
 SaveManager::SaveManager() {
     coreSectionIDsByName["base"] = SECTION_ID_BASE;
     coreSectionIDsByName["randomizer"] = SECTION_ID_RANDOMIZER;
@@ -233,6 +271,15 @@ SaveManager::SaveManager() {
         SaveManager::Instance->SaveData("flags", bank.flags);
     }, true, SECTION_PARENT_NONE);
 
+    // Independent per-save state for the optional Expanded Navi Quest Hints enhancement.
+    AddLoadFunction("expandedNaviHints", 1, []() {
+        SaveManager::Instance->LoadData("nextHint", gSaveContext.ship.expandedNaviNextHint, static_cast<u8>(0));
+        gSaveContext.ship.expandedNaviNextHint = gSaveContext.ship.expandedNaviNextHint ? 1 : 0;
+    });
+    AddSaveFunction("expandedNaviHints", 1, [](const SaveContext& saveContext, int, bool) {
+        SaveManager::Instance->SaveData("nextHint", saveContext.ship.expandedNaviNextHint);
+    }, true, SECTION_PARENT_NONE);
+
     // Independent, versioned section. Older saves remain unshuffled regardless of the menu toggle.
     AddLoadFunction("localDungeonShuffle", 1, []() {
         auto& data = gSaveContext.ship.localDungeonShuffle;
@@ -274,6 +321,36 @@ SaveManager::SaveManager() {
         });
     }, true, SECTION_PARENT_NONE);
 
+    AddLoadFunction("localWorldShuffle", 3, []() { LoadLocalWorldShuffleSection(false); });
+    AddLoadFunction("localWorldShuffle", LOCAL_WORLD_SHUFFLE_VERSION,
+                    []() { LoadLocalWorldShuffleSection(true); });
+
+    AddSaveFunction("localWorldShuffle", LOCAL_WORLD_SHUFFLE_VERSION, [](const SaveContext& saveContext, int, bool) {
+        if (saveContext.ship.quest.id != QUEST_LOCAL_WORLD_SHUFFLE) return;
+        const auto& data = saveContext.ship.localWorldShuffle;
+        SaveManager::Instance->SaveData("state", data.state);
+        SaveManager::Instance->SaveData("masterQuest", data.masterQuest);
+        SaveManager::Instance->SaveData("forestSwordQuest", data.forestSwordQuest);
+        SaveManager::Instance->SaveData("startingHearts", data.startingHearts);
+        SaveManager::Instance->SaveData("seed", data.seed);
+        SaveManager::Instance->SaveData("placementCount", data.placementCount);
+        SaveManager::Instance->SaveData("npcPrizesEnabled", data.npcPrizesEnabled);
+        SaveManager::Instance->SaveData("seedRating", data.seedRating);
+        SaveManager::Instance->SaveArray("npcRepeatPrizes", LOCAL_WORLD_NPC_REPEAT_PRIZE_COUNT, [&](size_t i) {
+            SaveManager::Instance->SaveData("", data.npcRepeatPrizes[i]);
+        });
+        SaveManager::Instance->SaveArray("placements", data.placementCount, [&](size_t i) {
+            SaveManager::Instance->SaveStruct("", [&]() {
+                const auto& placement = data.placements[i];
+                SaveManager::Instance->SaveData("check", placement.check);
+                SaveManager::Instance->SaveData("item", placement.item);
+                SaveManager::Instance->SaveData("collected", placement.collected);
+                SaveManager::Instance->SaveData("childAccessible", placement.childAccessible);
+                SaveManager::Instance->SaveData("adultAccessible", placement.adultAccessible);
+            });
+        });
+    }, true, SECTION_PARENT_NONE);
+
     AddInitFunction(InitFileImpl);
 
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnExitGame>(
@@ -297,6 +374,8 @@ SaveManager::SaveManager() {
         }
 
         info.randoSave = 0;
+        info.localWorldShuffle = 0;
+        info.localWorldSeedRating = LOCAL_WORLD_RATING_UNKNOWN;
         info.requiresMasterQuest = 0;
         info.requiresOriginal = 0;
 
@@ -812,6 +891,50 @@ void SaveManager::StartupCheckAndInitMeta(int fileNum) {
         fileMetaInfo[fileNum].requiresMasterQuest = isMasterQuest;
 
         fileMetaInfo[fileNum].randoSave = isRando;
+        fileMetaInfo[fileNum].localWorldShuffle = metaSaveBlock.value("questId", -1) == QUEST_LOCAL_WORLD_SHUFFLE;
+        fileMetaInfo[fileNum].localWorldSeedRating = LOCAL_WORLD_RATING_UNKNOWN;
+        if (fileMetaInfo[fileNum].localWorldShuffle) {
+            const auto& section = sections.at("localWorldShuffle");
+            const int localVersion = section.at("version").get<int>();
+            if (isRando || (localVersion != 3 && localVersion != LOCAL_WORLD_SHUFFLE_VERSION)) {
+                throw std::runtime_error("Unsupported local world shuffle format");
+            }
+            const auto& block = section.at("data");
+            auto data = std::make_unique<LocalWorldShuffleSaveData>();
+            block.at("state").get_to(data->state);
+            block.at("masterQuest").get_to(data->masterQuest);
+            block.at("forestSwordQuest").get_to(data->forestSwordQuest);
+            block.at("startingHearts").get_to(data->startingHearts);
+            block.at("seed").get_to(data->seed);
+            data->seedRating = block.value("seedRating", static_cast<u8>(LOCAL_WORLD_RATING_UNKNOWN));
+            block.at("placementCount").get_to(data->placementCount);
+            if (localVersion >= 4) {
+                block.at("npcPrizesEnabled").get_to(data->npcPrizesEnabled);
+                const auto& repeats = block.at("npcRepeatPrizes");
+                if (!repeats.is_array() || repeats.size() != LOCAL_WORLD_NPC_REPEAT_PRIZE_COUNT) {
+                    throw std::runtime_error("Invalid local world NPC repeat table size");
+                }
+                for (size_t i = 0; i < repeats.size(); ++i) repeats[i].get_to(data->npcRepeatPrizes[i]);
+            }
+            const auto& placements = block.at("placements");
+            if (!placements.is_array() || data->placementCount > LOCAL_WORLD_SHUFFLE_MAX_CHECKS ||
+                placements.size() != data->placementCount) {
+                throw std::runtime_error("Invalid local world shuffle table size");
+            }
+            for (size_t i = 0; i < placements.size(); ++i) {
+                placements[i].at("check").get_to(data->placements[i].check);
+                placements[i].at("item").get_to(data->placements[i].item);
+                placements[i].at("collected").get_to(data->placements[i].collected);
+                placements[i].at("childAccessible").get_to(data->placements[i].childAccessible);
+                placements[i].at("adultAccessible").get_to(data->placements[i].adultAccessible);
+            }
+            if (!LocalWorldShuffle_ValidateData(data.get())) {
+                throw std::runtime_error("Invalid local world shuffle table");
+            }
+            fileMetaInfo[fileNum].requiresMasterQuest = data->masterQuest;
+            fileMetaInfo[fileNum].requiresOriginal = !data->masterQuest;
+            fileMetaInfo[fileNum].localWorldSeedRating = data->seedRating;
+        }
         if (isRando) {
             nlohmann::json& randoBlock = sections["randomizer"]["data"];
 
@@ -886,14 +1009,19 @@ void SaveManager::InitMeta(int fileNum) {
     }
 
     fileMetaInfo[fileNum].randoSave = IS_RANDO;
+    fileMetaInfo[fileNum].localWorldShuffle = IS_LOCAL_WORLD_SHUFFLE;
+    fileMetaInfo[fileNum].localWorldSeedRating = IS_LOCAL_WORLD_SHUFFLE
+        ? gSaveContext.ship.localWorldShuffle.seedRating : LOCAL_WORLD_RATING_UNKNOWN;
     // If the file is marked as a Master Quest file or if we're randomized and have at least one master quest dungeon,
     // we need the mq otr.
     fileMetaInfo[fileNum].requiresMasterQuest =
-        IS_MASTER_QUEST || (IS_RANDO && randoContext->GetDungeons()->CountMQ() > 0);
+        IS_MASTER_QUEST || (IS_LOCAL_WORLD_SHUFFLE && gSaveContext.ship.localWorldShuffle.masterQuest) ||
+        (IS_RANDO && randoContext->GetDungeons()->CountMQ() > 0);
     // If the file is not marked as Master Quest, it could still theoretically be a rando save with all 12 MQ dungeons,
     // in which case we don't actually require a vanilla OTR.
     fileMetaInfo[fileNum].requiresOriginal =
-        !IS_MASTER_QUEST && (!IS_RANDO || randoContext->GetDungeons()->CountMQ() < 12);
+        !IS_MASTER_QUEST && !(IS_LOCAL_WORLD_SHUFFLE && gSaveContext.ship.localWorldShuffle.masterQuest) &&
+        (!IS_RANDO || randoContext->GetDungeons()->CountMQ() < 12);
 
     fileMetaInfo[fileNum].buildVersionMajor = gSaveContext.ship.stats.buildVersionMajor;
     fileMetaInfo[fileNum].buildVersionMinor = gSaveContext.ship.stats.buildVersionMinor;
@@ -919,6 +1047,8 @@ void SaveManager::InitFileImpl(bool isDebug) {
 void SaveManager::InitFileNormal() {
     gSaveContext.ship.bankHylia = {};
     gSaveContext.ship.localDungeonShuffle = {};
+    gSaveContext.ship.localWorldShuffle = {};
+    gSaveContext.ship.expandedNaviNextHint = 0;
     gSaveContext.totalDays = 0;
     gSaveContext.bgsDayCount = 0;
 
@@ -1334,7 +1464,20 @@ void SaveManager::SaveFileThreaded(int fileNum, const SaveContext& saveContext, 
     SPDLOG_INFO("Save File - fileNum: {}", fileNum);
     // Needed for first time save, hasn't changed in forever anyway
     saveBlock["version"] = 1;
-    if (IS_RANDO) {
+    auto& sections = saveBlock["sections"];
+    // A fresh file has no sections yet. Key-based erase() requires an object,
+    // so initialize the container before removing stale quest-specific sections.
+    if (sections.is_null()) {
+        sections = nlohmann::json::object();
+    }
+    if (saveContext.ship.quest.id == QUEST_LOCAL_WORLD_SHUFFLE) {
+        saveBlock["questId"] = QUEST_LOCAL_WORLD_SHUFFLE;
+        sections.erase("randomizer");
+    } else {
+        saveBlock.erase("questId");
+        sections.erase("localWorldShuffle");
+    }
+    if (saveContext.ship.quest.id == QUEST_RANDOMIZER) {
         saveBlock["fileType"] = FILE_TYPE_SAVE_RANDO;
     } else {
         saveBlock["fileType"] = FILE_TYPE_SAVE_VANILLA;
@@ -1343,7 +1486,8 @@ void SaveManager::SaveFileThreaded(int fileNum, const SaveContext& saveContext, 
         for (auto& sectionHandlerPair : sectionSaveHandlers) {
             auto& saveFuncInfo = sectionHandlerPair.second;
             // Don't call SaveFuncs for sections that aren't tied to game save
-            if (!saveFuncInfo.saveWithBase || (saveFuncInfo.name == "randomizer" && !IS_RANDO)) {
+            if (!saveFuncInfo.saveWithBase || (saveFuncInfo.name == "randomizer" && saveContext.ship.quest.id != QUEST_RANDOMIZER) ||
+                (saveFuncInfo.name == "localWorldShuffle" && saveContext.ship.quest.id != QUEST_LOCAL_WORLD_SHUFFLE)) {
                 continue;
             }
             nlohmann::json& sectionBlock = saveBlock["sections"][saveFuncInfo.name];
@@ -1437,7 +1581,16 @@ void SaveManager::LoadFile(int fileNum) {
             SPDLOG_ERROR("Save at {} contains no version", fileName.string());
             assert(false);
         }
-        if (saveBlock.contains("fileType") && saveBlock["fileType"] == FILE_TYPE_SAVE_RANDO) {
+        const bool isLocalWorld = saveBlock.value("questId", -1) == QUEST_LOCAL_WORLD_SHUFFLE;
+        if (isLocalWorld) {
+            gSaveContext.ship.quest.id = QUEST_LOCAL_WORLD_SHUFFLE;
+            const int localVersion = saveBlock["sections"].contains("localWorldShuffle") ?
+                saveBlock["sections"]["localWorldShuffle"].value("version", 0) : 0;
+            if (localVersion != 3 && localVersion != LOCAL_WORLD_SHUFFLE_VERSION) {
+                throw std::runtime_error("Missing or unsupported local world shuffle data");
+            }
+        }
+        if (!isLocalWorld && saveBlock.contains("fileType") && saveBlock["fileType"] == FILE_TYPE_SAVE_RANDO) {
             gSaveContext.ship.quest.id = QUEST_RANDOMIZER;
         }
         switch (saveBlock["version"].get<int>()) {
@@ -1478,6 +1631,13 @@ void SaveManager::LoadFile(int fileNum) {
                              GetFileName(fileNum).string());
                 assert(false);
                 break;
+        }
+        if (isLocalWorld) {
+            if (!LocalWorldShuffle_ValidateData(&gSaveContext.ship.localWorldShuffle)) {
+                throw std::runtime_error("Incomplete local world shuffle data");
+            }
+            gSaveContext.ship.quest.id = QUEST_LOCAL_WORLD_SHUFFLE;
+            gSaveContext.ship.localDungeonShuffle = {};
         }
         InitMeta(fileNum);
         GameInteractor::Instance->ExecuteHooks<GameInteractor::OnLoadFile>(fileNum);
@@ -1895,7 +2055,7 @@ void SaveManager::LoadBaseVersion2() {
     });
     int isMQ = 0;
     SaveManager::Instance->LoadData("isMasterQuest", isMQ);
-    if (isMQ) {
+    if (isMQ && !IS_LOCAL_WORLD_SHUFFLE) {
         gSaveContext.ship.quest.id = QUEST_MASTER;
     }
 
@@ -2121,7 +2281,7 @@ void SaveManager::LoadBaseVersion3() {
     });
     int isMQ = 0;
     SaveManager::Instance->LoadData("isMasterQuest", isMQ);
-    if (isMQ) {
+    if (isMQ && !IS_LOCAL_WORLD_SHUFFLE) {
         gSaveContext.ship.quest.id = QUEST_MASTER;
     }
     SaveManager::Instance->LoadStruct("backupFW", []() {
@@ -2294,7 +2454,7 @@ void SaveManager::LoadBaseVersion4() {
     });
     int isMQ = 0;
     SaveManager::Instance->LoadData("isMasterQuest", isMQ);
-    if (isMQ) {
+    if (isMQ && !IS_LOCAL_WORLD_SHUFFLE) {
         gSaveContext.ship.quest.id = QUEST_MASTER;
     }
     SaveManager::Instance->LoadStruct("backupFW", []() {
@@ -2459,7 +2619,8 @@ void SaveManager::SaveBase(const SaveContext& saveContext, int sectionID, bool f
     SaveManager::Instance->SaveArray("randomizerInf", ARRAY_COUNT(saveContext.ship.randomizerInf), [&](size_t i) {
         SaveManager::Instance->SaveData("", saveContext.ship.randomizerInf[i]);
     });
-    SaveManager::Instance->SaveData("isMasterQuest", saveContext.ship.quest.id == QUEST_MASTER);
+    SaveManager::Instance->SaveData("isMasterQuest", saveContext.ship.quest.id == QUEST_MASTER ||
+        (saveContext.ship.quest.id == QUEST_LOCAL_WORLD_SHUFFLE && saveContext.ship.localWorldShuffle.masterQuest));
     SaveManager::Instance->SaveStruct("backupFW", [&]() {
         SaveManager::Instance->SaveStruct("pos", [&]() {
             SaveManager::Instance->SaveData("x", saveContext.ship.backupFW.pos.x);
@@ -2573,6 +2734,7 @@ void SaveManager::DeleteZeldaFile(int fileNum) {
     }
     fileMetaInfo[fileNum].valid = false;
     fileMetaInfo[fileNum].randoSave = false;
+    fileMetaInfo[fileNum].localWorldShuffle = false;
     fileMetaInfo[fileNum].requiresMasterQuest = false;
     fileMetaInfo[fileNum].requiresOriginal = false;
     GameInteractor::Instance->ExecuteHooks<GameInteractor::OnDeleteFile>(fileNum);
@@ -2939,14 +3101,6 @@ extern "C" void Save_Init(void) {
 
 extern "C" void Save_InitFile(int isDebug) {
     SaveManager::Instance->InitFile(isDebug != 0);
-    // This C bridge is used when creating files. LoadFile uses InitFile directly,
-    // so enabling the menu option can never convert an old save during loading.
-    if (!isDebug && CVarGetInteger(CVAR_ENHANCEMENT("LocalDungeonItemShuffle"), 0)) {
-        auto& data = gSaveContext.ship.localDungeonShuffle;
-        data.state = LOCAL_DUNGEON_SHUFFLE_PENDING;
-        data.seed = std::random_device{}();
-        data.startingHearts = static_cast<u8>(std::clamp(CVarGetInteger(CVAR_ENHANCEMENT("StartingHearts"), 3), 1, 5));
-    }
 }
 
 extern "C" void Save_SaveFile(void) {

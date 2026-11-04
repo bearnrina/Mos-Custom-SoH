@@ -1,3 +1,4 @@
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_en_bom_bowl_pit.h"
 #include "vt.h"
 #include "overlays/actors/ovl_En_Bom_Chu/z_en_bom_chu.h"
@@ -189,7 +190,9 @@ void EnBomBowlPit_GivePrize(EnBomBowlPit* this, PlayState* play) {
     player->stateFlags1 &= ~PLAYER_STATE1_IN_CUTSCENE;
     this->actor.parent = NULL;
     if (GameInteractor_Should(VB_GIVE_ITEM_FROM_BOMBCHU_BOWLING, true, this)) {
-        Actor_OfferGetItem(&this->actor, play, this->getItemId, 2000.0f, 1000.0f);
+        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, this->prizeIndex == EXITEM_BOMB_BAG_BOWLING ? RC_MARKET_BOMBCHU_BOWLING_FIRST_PRIZE :
+            this->prizeIndex == EXITEM_HEART_PIECE_BOWLING ? RC_MARKET_BOMBCHU_BOWLING_SECOND_PRIZE : RC_UNKNOWN_CHECK,
+            this->getItemId, 2000.0f, 1000.0f);
     }
     player->stateFlags1 |= PLAYER_STATE1_IN_CUTSCENE;
     this->actionFunc = EnBomBowlPit_WaitTillPrizeGiven;
@@ -197,9 +200,13 @@ void EnBomBowlPit_GivePrize(EnBomBowlPit* this, PlayState* play) {
 
 void EnBomBowlPit_WaitTillPrizeGiven(EnBomBowlPit* this, PlayState* play) {
     if (Actor_HasParent(&this->actor, play) || !GameInteractor_Should(VB_GIVE_ITEM_FROM_BOMBCHU_BOWLING, true, this)) {
+        LocalWorldShuffle_AcceptNpcPrize(&this->actor, play, this->prizeIndex == EXITEM_BOMB_BAG_BOWLING ? RC_MARKET_BOMBCHU_BOWLING_FIRST_PRIZE :
+            this->prizeIndex == EXITEM_HEART_PIECE_BOWLING ? RC_MARKET_BOMBCHU_BOWLING_SECOND_PRIZE : RC_UNKNOWN_CHECK);
         this->actionFunc = EnBomBowlPit_Reset;
     } else {
-        Actor_OfferGetItem(&this->actor, play, this->getItemId, 2000.0f, 1000.0f);
+        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, this->prizeIndex == EXITEM_BOMB_BAG_BOWLING ? RC_MARKET_BOMBCHU_BOWLING_FIRST_PRIZE :
+            this->prizeIndex == EXITEM_HEART_PIECE_BOWLING ? RC_MARKET_BOMBCHU_BOWLING_SECOND_PRIZE : RC_UNKNOWN_CHECK,
+            this->getItemId, 2000.0f, 1000.0f);
     }
 }
 

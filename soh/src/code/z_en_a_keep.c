@@ -565,13 +565,14 @@ static s32 EnAObj_ArrowClipBlade(ArrowSignClipVertex* triangle, const ArrowSignP
     return true;
 }
 
-static s32 EnAObj_ArrowIsStab(Player* player) {
+// Only spin attacks detach the board. Stabs and ordinary slashes spark on contact.
+static s32 EnAObj_ArrowIsSpinAttack(Player* player) {
     switch (player->meleeWeaponAnimation) {
-        case PLAYER_MWA_STAB_1H:
-        case PLAYER_MWA_STAB_2H:
-        case PLAYER_MWA_STAB_COMBO_1H:
-        case PLAYER_MWA_STAB_COMBO_2H:
-            return true; // Crouch stabs also use PLAYER_MWA_STAB_1H.
+        case PLAYER_MWA_SPIN_ATTACK_1H:
+        case PLAYER_MWA_SPIN_ATTACK_2H:
+        case PLAYER_MWA_BIG_SPIN_1H:
+        case PLAYER_MWA_BIG_SPIN_2H:
+            return true;
         default:
             return false;
     }
@@ -642,9 +643,9 @@ static void EnAObj_TryBreakArrowSign(EnAObj* this, PlayState* play) {
         return;
     }
 
-    // Only a stab can detach the arrow sign. A stab may hit the entire board
-    // (or the post), while all other sword strikes produce wood sparks.
-    if (!EnAObj_ArrowIsStab(player)) {
+    // Only a spin attack can detach the arrow sign, whether it hits the board
+    // or the post. Stabs and other sword strikes produce wood sparks.
+    if (!EnAObj_ArrowIsSpinAttack(player)) {
         sign->swordHitLatched = true;
         // The model is upright in vanilla scenes: convert the local contact back
         // through the actor's draw transform, including any scene rotation/scale.

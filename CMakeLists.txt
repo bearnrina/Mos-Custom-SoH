@@ -6,6 +6,8 @@ set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 
+option(SOH_REUSE_LOCAL_DEPENDENCIES "Use installed dependencies without automatic updates" OFF)
+option(SOH_SKIP_GIT_METADATA "Reuse cached version metadata without invoking Git" OFF)
 project(Ship VERSION 9.2.3 LANGUAGES C CXX)
 include(CMake/soh-cvars.cmake)
 include(CMake/lus-cvars.cmake)
@@ -42,6 +44,7 @@ list(GET NATO_PHONETIC_ALPHABET ${PATCH_INDEX} PROJECT_PATCH_WORD)
 set(PROJECT_BUILD_NAME "Ackbar ${PROJECT_PATCH_WORD}" CACHE STRING "" FORCE)
 set(PROJECT_TEAM "github.com/harbourmasters" CACHE STRING "" FORCE)
 
+if(NOT SOH_SKIP_GIT_METADATA)
 execute_process(
     COMMAND git branch --show-current
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
@@ -76,6 +79,10 @@ endif()
 
 set(CMAKE_PROJECT_GIT_COMMIT_TAG "${GIT_COMMIT_TAG}" CACHE STRING "Git commit tag" FORCE)
 
+else()
+    message(STATUS "Skipping Git; version metadata has not been refreshed")
+endif()
+
 set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT soh)
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
@@ -93,7 +100,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
         set(SOH_WINDOWS_ARM64 FALSE)
     endif()
 
-    include(CMake/automate-vcpkg.cmake)
+    if(NOT SOH_REUSE_LOCAL_DEPENDENCIES)
+        include(CMake/automate-vcpkg.cmake)
+    endif()
 
     set(VCPKG_TRIPLET x64-windows-static)
     set(VCPKG_TARGET_TRIPLET x64-windows-static)
@@ -102,8 +111,12 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
         set(VCPKG_TARGET_TRIPLET arm64-windows-static)
     endif()
 
+    if(NOT SOH_REUSE_LOCAL_DEPENDENCIES)
     vcpkg_bootstrap()
     vcpkg_install_packages(zlib bzip2 libzip libpng sdl2 sdl2-net glew glfw3 nlohmann-json tinyxml2 spdlog libogg libvorbis opus opusfile)
+    else()
+        message(STATUS "Reusing installed local dependencies; automatic updates are disabled")
+    endif()
     if (CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache|sccache")
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT Embedded)
     endif()

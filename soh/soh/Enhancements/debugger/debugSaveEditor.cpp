@@ -493,6 +493,20 @@ void DrawGeneralTab() {
     UIWidgets::BeginCardLayout(
         { .columnsPerRow = 2, .minColumnWidth = 350.0f, .fixedColumnWidths = { 450.0f, 450.0f } });
 
+    UIWidgets::BeginCard("generalGiveAllCard", 0);
+    if (Button("Give All", ButtonOptions().Color(Colors::Green).Tooltip("Maximize health, magic, and rupees"))) {
+        gSaveContext.isDoubleDefenseAcquired = 1;
+        gSaveContext.inventory.defenseHearts = 20;
+        gSaveContext.healthCapacity = gSaveContext.health = 20 * 16;
+        gSaveContext.magicCapacity = gSaveContext.magic = 0x60;
+        gSaveContext.magicLevel = 2;
+        gSaveContext.isMagicAcquired = true;
+        gSaveContext.isDoubleMagicAcquired = true;
+        Inventory_ChangeUpgrade(UPG_WALLET, IS_RANDO ? WALLET_LEVEL_MAX : WALLET_LEVEL_MAX - 1);
+        gSaveContext.rupees = CUR_CAPACITY(UPG_WALLET);
+    }
+    UIWidgets::EndCard();
+
     UIWidgets::BeginCard("identityCard");
 
     // Show status message when not in game
@@ -1954,6 +1968,21 @@ void DrawEquipmentTab() {
     UIWidgets::BeginCardLayout(
         { .columnsPerRow = 2, .minColumnWidth = 350.0f, .fixedColumnWidths = { 450.0f, 450.0f } });
 
+    UIWidgets::BeginCard("equipmentGiveAllCard", 0);
+    if (Button("Give All", ButtonOptions().Color(Colors::Green).Tooltip("Grant equipment and maximum upgrades"))) {
+        // Ownership bits for four swords, three shields, three tunics, and three boots.
+        gSaveContext.inventory.equipment |= 0x777F;
+        Inventory_ChangeUpgrade(UPG_BULLET_BAG, 3);
+        Inventory_ChangeUpgrade(UPG_QUIVER, 3);
+        Inventory_ChangeUpgrade(UPG_BOMB_BAG, 3);
+        Inventory_ChangeUpgrade(UPG_SCALE, 2);
+        Inventory_ChangeUpgrade(UPG_STRENGTH, 3);
+        Inventory_ChangeUpgrade(UPG_WALLET, IS_RANDO ? WALLET_LEVEL_MAX : WALLET_LEVEL_MAX - 1);
+        Inventory_ChangeUpgrade(UPG_STICKS, 3);
+        Inventory_ChangeUpgrade(UPG_NUTS, 3);
+    }
+    UIWidgets::EndCard();
+
     UIWidgets::BeginCard("equipmentCard", 0); // Force to column 0
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Equipment");
     ImGui::Spacing();
@@ -2301,6 +2330,24 @@ void DrawQuestStatusTab() {
     UIWidgets::BeginCardLayout(
         { .columnsPerRow = 2, .minColumnWidth = 350.0f, .fixedColumnWidths = { 450.0f, 450.0f } });
 
+    UIWidgets::BeginCard("questGiveAllCard", 0);
+    if (Button("Give All", ButtonOptions().Color(Colors::Green).Tooltip("Grant all displayed quest items, songs, and tokens"))) {
+        for (int32_t i = QUEST_MEDALLION_FOREST; i <= QUEST_MEDALLION_LIGHT; ++i) {
+            gSaveContext.inventory.questItems |= (1u << i);
+        }
+        for (int32_t i = QUEST_KOKIRI_EMERALD; i <= QUEST_ZORA_SAPPHIRE; ++i) {
+            gSaveContext.inventory.questItems |= (1u << i);
+        }
+        gSaveContext.inventory.questItems |= (1u << QUEST_STONE_OF_AGONY) |
+                                             (1u << QUEST_GERUDO_CARD) | (1u << QUEST_SKULL_TOKEN);
+        for (const auto& [quest, entry] : songMapping) {
+            gSaveContext.inventory.questItems |= (1u << entry.id);
+        }
+        gSaveContext.inventory.gsTokens = 100;
+        // Keep partial-heart progress unchanged; four pieces are represented by a full heart.
+    }
+    UIWidgets::EndCard();
+
     UIWidgets::BeginCard("medallionsStonesCard");
     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Medallions & Stones");
     ImGui::Spacing();
@@ -2419,6 +2466,31 @@ void DrawDungeonItemsTab() {
 
     UIWidgets::BeginCardLayout(
         { .columnsPerRow = 2, .minColumnWidth = 250.0f, .fixedColumnWidths = { 280.0f, 280.0f } });
+
+    UIWidgets::BeginCard("dungeonGiveAllCard", 0);
+    if (Button("Give All", ButtonOptions().Color(Colors::Green).Tooltip("Grant dungeon maps, compasses, boss keys, and maximum small keys"))) {
+        for (int32_t dungeonIndex = SCENE_DEKU_TREE; dungeonIndex <= SCENE_INSIDE_GANONS_CASTLE; ++dungeonIndex) {
+            if (dungeonIndex == SCENE_DEKU_TREE_BOSS || dungeonIndex == SCENE_DODONGOS_CAVERN_BOSS ||
+                dungeonIndex == SCENE_JABU_JABU_BOSS || dungeonIndex == SCENE_FOREST_TEMPLE_BOSS ||
+                dungeonIndex == SCENE_FIRE_TEMPLE_BOSS || dungeonIndex == SCENE_WATER_TEMPLE_BOSS ||
+                dungeonIndex == SCENE_SPIRIT_TEMPLE_BOSS || dungeonIndex == SCENE_SHADOW_TEMPLE_BOSS ||
+                dungeonIndex == SCENE_GANONDORF_BOSS || dungeonIndex == SCENE_GANON_BOSS || dungeonIndex == 0x0C) {
+                continue;
+            }
+            gSaveContext.inventory.dungeonItems[dungeonIndex] |=
+                (1u << (ITEM_DUNGEON_MAP - ITEM_KEY_BOSS)) |
+                (1u << (ITEM_COMPASS - ITEM_KEY_BOSS));
+            if (DungeonHasBossKey(dungeonIndex)) {
+                gSaveContext.inventory.dungeonItems[dungeonIndex] |= 1u;
+            }
+            const int8_t maxKeys = GetMaxKeysForDungeon(dungeonIndex);
+            if (maxKeys > 0) {
+                gSaveContext.inventory.dungeonKeys[dungeonIndex] = maxKeys;
+                gSaveContext.ship.stats.dungeonKeys[dungeonIndex] = maxKeys;
+            }
+        }
+    }
+    UIWidgets::EndCard();
 
     // All dungeons from Deku Tree to Ganon's Castle (skip boss scenes)
     for (int32_t dungeonIndex = SCENE_DEKU_TREE; dungeonIndex <= SCENE_INSIDE_GANONS_CASTLE; dungeonIndex++) {

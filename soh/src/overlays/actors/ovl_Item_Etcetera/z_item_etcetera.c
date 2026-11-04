@@ -5,6 +5,7 @@
  */
 
 #include "z_item_etcetera.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include <assert.h>
 
 #define FLAGS ACTOR_FLAG_UPDATE_CULLING_DISABLED
@@ -83,7 +84,9 @@ void ItemEtcetera_Init(Actor* thisx, PlayState* play) {
         case ITEM_ETC_LETTER:
             Actor_SetScale(&this->actor, 0.5f);
             this->futureActionFunc = func_80B858B4;
-            if (Flags_GetEventChkInf(EVENTCHKINF_OBTAINED_RUTOS_LETTER)) {
+            if (LocalWorldShuffle_HasCheck(&this->actor, play, this->actor.params) ?
+                LocalWorldShuffle_IsCollected(&this->actor, play, this->actor.params) :
+                Flags_GetEventChkInf(EVENTCHKINF_OBTAINED_RUTOS_LETTER)) {
                 Actor_Kill(&this->actor);
             }
             break;
@@ -119,6 +122,9 @@ void ItemEtcetera_WaitForObject(ItemEtcetera* this, PlayState* play) {
 }
 
 void func_80B85824(ItemEtcetera* this, PlayState* play) {
+    if (LocalWorldShuffle_OfferPickup(&this->actor, play, this->actor.params)) {
+        return;
+    }
     if (Actor_HasParent(&this->actor, play)) {
         if ((this->actor.params & 0xFF) == 1) {
             Flags_SetEventChkInf(EVENTCHKINF_OBTAINED_RUTOS_LETTER);
@@ -131,6 +137,9 @@ void func_80B85824(ItemEtcetera* this, PlayState* play) {
 }
 
 void func_80B858B4(ItemEtcetera* this, PlayState* play) {
+    if (LocalWorldShuffle_OfferPickup(&this->actor, play, this->actor.params)) {
+        return;
+    }
     if (Actor_HasParent(&this->actor, play)) {
         if ((this->actor.params & 0xFF) == 1) {
             Flags_SetEventChkInf(EVENTCHKINF_OBTAINED_RUTOS_LETTER);
@@ -206,7 +215,9 @@ void ItemEtcetera_DrawThroughLens(Actor* thisx, PlayState* play) {
     if (play->actorCtx.lensActive) {
         func_8002EBCC(&this->actor, play, 0);
         func_8002ED80(&this->actor, play, 0);
-        GetItem_Draw(play, this->giDrawId);
+        if (!LocalWorldShuffle_DrawPickup(&this->actor, play, this->actor.params)) {
+            GetItem_Draw(play, this->giDrawId);
+        }
     }
 }
 
@@ -215,5 +226,7 @@ void ItemEtcetera_Draw(Actor* thisx, PlayState* play) {
 
     func_8002EBCC(&this->actor, play, 0);
     func_8002ED80(&this->actor, play, 0);
-    GetItem_Draw(play, this->giDrawId);
+    if (!LocalWorldShuffle_DrawPickup(&this->actor, play, this->actor.params)) {
+        GetItem_Draw(play, this->giDrawId);
+    }
 }

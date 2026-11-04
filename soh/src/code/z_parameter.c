@@ -1874,6 +1874,31 @@ u8 Return_Item(u8 itemID, ModIndex modId, ItemID returnItem) {
  * @return u8
  */
 u8 Item_Give(PlayState* play, u8 item) {
+    // Local shuffle can award exact upgrades out of order. Collecting a lower
+    // upgrade (including the unchanged bracelet reward) must keep the higher one.
+    if (IS_LOCAL_WORLD_SHUFFLE &&
+        ((item == ITEM_HOOKSHOT && INV_CONTENT(ITEM_HOOKSHOT) == ITEM_LONGSHOT) ||
+         (item == ITEM_BRACELET && CUR_UPG_VALUE(UPG_STRENGTH) >= 1) ||
+         (item == ITEM_GAUNTLETS_SILVER && CUR_UPG_VALUE(UPG_STRENGTH) >= 2) ||
+         (item == ITEM_QUIVER_40 && CUR_UPG_VALUE(UPG_QUIVER) >= 2) ||
+         (item == ITEM_BULLET_BAG_40 && CUR_UPG_VALUE(UPG_BULLET_BAG) >= 2) ||
+         (item == ITEM_BOMB_BAG_30 && CUR_UPG_VALUE(UPG_BOMB_BAG) >= 2) ||
+         (item == ITEM_SCALE_SILVER && CUR_UPG_VALUE(UPG_SCALE) >= 1))) {
+        return Return_Item(item, MOD_NONE, ITEM_NONE);
+    }
+    // A shuffled capacity reward may precede its Quest weapon. The eventual
+    // base item must still install the weapon while retaining the larger capacity.
+    if (IS_LOCAL_WORLD_SHUFFLE &&
+        (item == ITEM_BOW || item == ITEM_QUIVER_30 || item == ITEM_SLINGSHOT || item == ITEM_BOMB_BAG_20)) {
+        s32 upgrade = (item == ITEM_BOW || item == ITEM_QUIVER_30) ? UPG_QUIVER :
+                      item == ITEM_SLINGSHOT ? UPG_BULLET_BAG : UPG_BOMB_BAG;
+        s32 inventoryItem = (item == ITEM_BOW || item == ITEM_QUIVER_30) ? ITEM_BOW :
+                            item == ITEM_SLINGSHOT ? ITEM_SLINGSHOT : ITEM_BOMB;
+        Inventory_ChangeUpgrade(upgrade, MAX(CUR_UPG_VALUE(upgrade), 1));
+        INV_CONTENT(inventoryItem) = inventoryItem;
+        AMMO(inventoryItem) = CUR_CAPACITY(upgrade);
+        return Return_Item(item, MOD_NONE, ITEM_NONE);
+    }
     // prevents getting sticks without the bag in case something got missed
     if (IS_RANDO && (item == ITEM_STICK || item == ITEM_STICKS_5 || item == ITEM_STICKS_10) &&
         Randomizer_GetSettingValue(RSK_SHUFFLE_DEKU_STICK_BAG) && CUR_UPG_VALUE(UPG_STICKS) == 0) {
@@ -2968,6 +2993,9 @@ s32 Health_ChangeBy(PlayState* play, s16 healthChange) {
 }
 
 s32 ForestSwordQuest_IsEnabled(void) {
+    if (IS_LOCAL_WORLD_SHUFFLE) {
+        return gSaveContext.ship.localWorldShuffle.forestSwordQuest;
+    }
     return !IS_RANDO && CVarGetInteger(CVAR_ENHANCEMENT("ForestSwordQuest"), 0);
 }
 
@@ -4365,6 +4393,8 @@ void Interface_DrawItemButtons(PlayState* play) {
     if (interfaceCtx->naviCalling && (play->pauseCtx.state == 0) && (play->pauseCtx.debugState == 0) &&
         (play->csCtx.state == CS_STATE_IDLE)) {
         if (!sCUpInvisible && !hideButtons &&
+            !(CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0) &&
+              !CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0)) &&
             (!CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0) ||
              CVarGetInteger(CVAR_COSMETIC("HUD.NaviDpad.PosType"), ORIGINAL_LOCATION) != HIDDEN)) {
             // C-Up Button Texture, Color & Label (Navi Text)
@@ -5795,6 +5825,107 @@ void Interface_Draw(PlayState* play) {
                                   PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0);
                 Interface_DrawAmmoCount(play, 4, interfaceCtx->dpadUpAlpha);
             }
+        }
+
+        // Mo's Custom: one equipment/Navi D-Pad, using the established Navi position and color.
+        // This replaces (rather than duplicates) the original Navi D-Pad while cycling is enabled.
+        if (CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0) &&
+            !CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0) && !hideButtons && fullUi &&
+            play->pauseCtx.state == 0 && play->pauseCtx.debugState == 0 &&
+            play->csCtx.state == CS_STATE_IDLE &&
+            CVarGetInteger(CVAR_COSMETIC("HUD.EquipmentDpad.PosType"), ORIGINAL_LOCATION) != HIDDEN) {
+            s32 posType = CVarGetInteger(CVAR_COSMETIC("HUD.EquipmentDpad.PosType"), ORIGINAL_LOCATION);
+            s32 useMargins = CVarGetInteger(CVAR_COSMETIC("HUD.EquipmentDpad.UseMargins"), 0);
+            s16 leftMargin = useMargins ? Left_HUD_Margin : 0;
+            s16 rightMargin = useMargins ? Right_HUD_Margin : 0;
+            s16 topMargin = useMargins ? -Top_HUD_Margin : 0;
+            s16 x;
+            s16 y;
+            if (posType == ORIGINAL_LOCATION) {
+                // Center the 32px indicator around the existing 16px Navi D-Pad location.
+                // With C-Up item equipping OFF, use the same default Navi location.
+                s32 naviType = CVarGetInteger(CVAR_COSMETIC("HUD.NaviDpad.PosType"), ORIGINAL_LOCATION);
+                s32 naviMargins = CVarGetInteger(CVAR_COSMETIC("HUD.NaviDpad.UseMargins"), 0);
+                s16 naviRightMargin = naviMargins ? Right_HUD_Margin : 0;
+                s16 naviLeftMargin = naviMargins ? Left_HUD_Margin : 0;
+                s16 naviTopMargin = naviMargins ? Top_HUD_Margin : 0;
+                if (naviType == ORIGINAL_LOCATION || naviType == HIDDEN) {
+                    x = OTRGetDimensionFromRightEdge(C_LEFT_BUTTON_X - 40 + naviRightMargin) - 8;
+                    y = 8 - naviTopMargin;
+                } else {
+                    s16 naviX = CVarGetInteger(CVAR_COSMETIC("HUD.NaviDpad.PosX"), 0);
+                    y = CVarGetInteger(CVAR_COSMETIC("HUD.NaviDpad.PosY"), 0) - naviTopMargin - 8;
+                    if (naviType == ANCHOR_LEFT) {
+                        x = OTRGetDimensionFromLeftEdge(naviX + naviLeftMargin) - 8;
+                    } else if (naviType == ANCHOR_RIGHT) {
+                        x = OTRGetDimensionFromRightEdge(naviX + naviRightMargin) - 8;
+                    } else {
+                        x = naviX - 8;
+                    }
+                }
+            } else {
+                x = CVarGetInteger(CVAR_COSMETIC("HUD.EquipmentDpad.PosX"), 0);
+                y = CVarGetInteger(CVAR_COSMETIC("HUD.EquipmentDpad.PosY"), 0) + topMargin;
+                if (posType == ANCHOR_LEFT) {
+                    x = OTRGetDimensionFromLeftEdge(x + leftMargin);
+                } else if (posType == ANCHOR_RIGHT) {
+                    x = OTRGetDimensionFromRightEdge(x + rightMargin);
+                }
+            }
+            Color_RGB8 equipmentDpadColor = { 255, 160, 0 };
+            if (CVarGetInteger(CVAR_COSMETIC("HUD.CButtons.Changed"), 0)) {
+                equipmentDpadColor = CVarGetColor24(CVAR_COSMETIC("HUD.CButtons.Value"), equipmentDpadColor);
+            }
+            if (CVarGetInteger(CVAR_COSMETIC("HUD.CUpButton.Changed"), 0)) {
+                equipmentDpadColor = CVarGetColor24(CVAR_COSMETIC("HUD.CUpButton.Value"), equipmentDpadColor);
+            }
+            gDPPipeSync(OVERLAY_DISP++);
+            gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+            gDPSetPrimColor(OVERLAY_DISP++, 0, 0, equipmentDpadColor.r, equipmentDpadColor.g, equipmentDpadColor.b,
+                            interfaceCtx->healthAlpha);
+            gDPLoadTextureBlock(OVERLAY_DISP++, gDPadTex, G_IM_FMT_IA, G_IM_SIZ_16b, 32, 32, 0,
+                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
+                                G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+            gSPWideTextureRectangle(OVERLAY_DISP++, x << 2, y << 2, (x + 32) << 2,
+                                    (y + 32) << 2, G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
+            // Fixed category symbols: left sword, down boots, right shield, up tunic if available.
+            const s16 offsets[4][2] = { { 2, 10 }, { 11, 20 }, { 20, 10 }, { 11, 0 } };
+            const s32 itemIds[4] = { ITEM_SWORD_KOKIRI, ITEM_BOOTS_KOKIRI,
+                                     ITEM_SHIELD_HYLIAN, ITEM_TUNIC_KOKIRI };
+            for (s32 i = 0; i < 4; i++) {
+                if (i == 3 && CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0)) {
+                    continue; // Navi owns Up when C-Up equipping is enabled.
+                }
+                gDPPipeSync(OVERLAY_DISP++);
+                gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATERGBA_PRIM, G_CC_MODULATERGBA_PRIM);
+                gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, interfaceCtx->healthAlpha);
+                gDPLoadTextureBlock(OVERLAY_DISP++, gItemIcons[itemIds[i]], G_IM_FMT_RGBA, G_IM_SIZ_32b,
+                                    32, 32, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
+                                    G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                gSPWideTextureRectangle(OVERLAY_DISP++, (x + offsets[i][0]) << 2,
+                                        (y + offsets[i][1]) << 2,
+                                        (x + offsets[i][0] + 10) << 2,
+                                        (y + offsets[i][1] + 10) << 2,
+                                        G_TX_RENDERTILE, 0, 0, (32 << 10) / 10, (32 << 10) / 10);
+            }
+            // Preserve the existing localized/custom Navi call label and its blink timing.
+            if (CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0) && interfaceCtx->naviCalling &&
+                !sCUpInvisible) {
+                gDPPipeSync(OVERLAY_DISP++);
+                gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, interfaceCtx->healthAlpha);
+                gDPSetEnvColor(OVERLAY_DISP++, 0, 0, 0, 0);
+                gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0,
+                                  PRIMITIVE, 0, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0,
+                                  PRIMITIVE, 0);
+                gDPLoadTextureBlock_4b(OVERLAY_DISP++, ResourceMgr_GetMoNaviLabel(gSaveContext.language == LANGUAGE_JPN), G_IM_FMT_IA,
+                                       32, 8, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
+                                       G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                // Use the installed Navi artwork, or the standard localized text.
+                gSPWideTextureRectangle(OVERLAY_DISP++, (x + 1) << 2, (y + 1) << 2,
+                                        (x + 33) << 2, (y + 9) << 2, G_TX_RENDERTILE,
+                                        0, 0, 1 << 10, 1 << 10);
+            }
+            gDPPipeSync(OVERLAY_DISP++);
         }
 
         if (!CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0) && CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0) != 0) {

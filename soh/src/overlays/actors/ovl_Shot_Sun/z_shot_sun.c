@@ -5,6 +5,7 @@
  */
 
 #include "z_shot_sun.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "scenes/overworld/spot06/spot06_scene.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
@@ -165,7 +166,8 @@ void ShotSun_UpdateHyliaSun(ShotSun* this, PlayState* play) {
     if (this->collider.base.acFlags & AC_HIT) {
         Sfx_PlaySfxCentered(NA_SE_SY_CORRECT_CHIME);
         osSyncPrintf(VT_FGCOL(CYAN) "SHOT_SUN HIT!!!!!!!\n" VT_RST);
-        if (GameInteractor_Should(VB_SPAWN_FIRE_ARROW, INV_CONTENT(ITEM_ARROW_FIRE) == ITEM_NONE)) {
+        if (IS_LOCAL_WORLD_SHUFFLE ? !LocalWorldShuffle_CheckCollected(RC_LH_SUN) :
+            GameInteractor_Should(VB_SPAWN_FIRE_ARROW, INV_CONTENT(ITEM_ARROW_FIRE) == ITEM_NONE)) {
             Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_ETCETERA, 700.0f, -800.0f, 7261.0f, 0, 0, 0, 7);
             if (GameInteractor_Should(VB_PLAY_FIRE_ARROW_CS, true)) {
                 play->csCtx.segment = SEGMENTED_TO_VIRTUAL(gLakeHyliaFireArrowsCS);

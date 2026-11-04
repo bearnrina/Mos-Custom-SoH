@@ -87,7 +87,7 @@ bool SohFileSelect_IsQuestHidden(u8 quest) {
 
 u8 SohFileSelect_CountVisibleQuests() {
     u8 count = 0;
-    for (u8 quest = QUEST_NORMAL; quest <= QUEST_BOSSRUSH; ++quest) {
+    for (u8 quest = QUEST_NORMAL; quest <= QUEST_LOCAL_WORLD_SHUFFLE; ++quest) {
         if (!SohFileSelect_IsQuestHidden(quest)) {
             count++;
         }
@@ -117,18 +117,12 @@ void SohFileSelect_ShowPresetModal() {
     }
     std::shared_ptr<SohModalWindow> modal = static_pointer_cast<SohModalWindow>(
         Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetGuiWindow("Modal Window"));
-    if (modal->IsPopupOpen("Take a look at our presets!")) {
+    if (modal->IsPopupOpen("Choose a Preset")) {
         modal->DismissPopup();
     } else {
-        modal->RegisterPopup("Take a look at our presets!",
-                             "\nHey there! Ship comes with a ton of options, but none of them are on by default,\n"
-                             "even in randomizer. If you haven't already, we highly recommend applying the\n"
-                             "\"Enhancements - Curated Randomizer\" preset for a great, curated out of the\n"
-                             "box rando experience.\n"
-                             "\n"
-                             "Afterwards, consider taking a look at the rest of the ESC menu to further tweak\n"
-                             "the experience to your liking!\n",
-                             "Cool, show me the presets!", "Got it, just let me play!", SohFileSelect_ShowPresetMenu,
+        modal->RegisterPopup("Choose a Preset",
+                             "Start with one of Mo's presets, then customize settings in the menu.",
+                             "View Presets", "Not Now", SohFileSelect_ShowPresetMenu,
                              SohFileSelect_DismissPresetModal);
     }
 }

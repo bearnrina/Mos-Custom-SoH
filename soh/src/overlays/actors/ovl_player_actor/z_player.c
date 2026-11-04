@@ -38,6 +38,7 @@
 #include "soh/Enhancements/randomizer/randomizer_grotto.h"
 #include "soh/frame_interpolation.h"
 #include "soh/OTRGlobals.h"
+#include "soh/ResourceManagerHelpers.h"
 #include "soh/Enhancements/savestate_serialize.h"
 
 #include <string.h>
@@ -47,6 +48,9 @@
 
 // Some player animations are played at this reduced speed, for reasons yet unclear.
 // This is called "adjusted" for now.
+// Existing Speed Modifier activation logic, shared with movement actors.
+extern f32 Ship_GetSpeedModifierFactor(s32 inputAvailable);
+
 #define PLAYER_ANIM_ADJUSTED_SPEED (2.0f / 3.0f)
 
 typedef enum {
@@ -2644,6 +2648,123 @@ void Player_StartChangingHeldItem(Player* this, PlayState* play) {
     this->stateFlags1 &= ~PLAYER_STATE1_START_CHANGING_HELD_ITEM;
 }
 
+int Player_CanUpdateItems(Player* this);
+
+/* Mo's Custom: gameplay-only equipment cycling; item-button assignments remain untouched. */
+static void Player_CycleEquipmentWithDpad(Player* this, PlayState* play) {
+    u16 pressed;
+    s16 type;
+    s16 current;
+    s16 next = -1;
+    s16 candidate;
+    s32 swordlessAllowed;
+
+    if (!CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0) ||
+        CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0) ||
+        (this->actor.category != ACTORCAT_PLAYER) || (play->pauseCtx.state != 0) ||
+        (play->csCtx.state != CS_STATE_IDLE) || (this->csAction != 0) ||
+        (play->activeCamera != CAM_ID_MAIN) || (play->transitionTrigger == TRANS_TRIGGER_START) ||
+        (play->shootingGalleryStatus != 0) || (play->bombchuBowlingStatus != 0) ||
+        (gSaveContext.health == 0) || (gSaveContext.timerState == TIMER_STATE_STOP) ||
+        (this->actor.parent != NULL) ||
+        (this->stateFlags1 & (PLAYER_STATE1_INPUT_DISABLED | PLAYER_STATE1_IN_ITEM_CS |
+                              PLAYER_STATE1_IN_CUTSCENE | PLAYER_STATE1_TALKING | PLAYER_STATE1_DEAD |
+                              PLAYER_STATE1_SHIELDING | PLAYER_STATE1_ON_HORSE |
+                              PLAYER_STATE1_START_CHANGING_HELD_ITEM | PLAYER_STATE1_CHARGING_SPIN_ATTACK)) ||
+        (this->stateFlags2 & PLAYER_STATE2_OCARINA_PLAYING) ||
+        (this->heldItemAction != this->itemAction) || !Player_CanUpdateItems(this)) {
+        return;
+    }
+
+    pressed = sControlInput->press.button;
+    /* Avoid changing equipment while an attack or another action button is pressed. */
+    if (pressed & (BTN_B | BTN_A | BTN_CLEFT | BTN_CDOWN | BTN_CRIGHT | BTN_CUP)) {
+        return;
+    }
+    /* A simultaneous pair of D-Pad directions is not an equipment selection. */
+    if (((pressed & BTN_DLEFT) != 0) + ((pressed & BTN_DDOWN) != 0) +
+        ((pressed & BTN_DRIGHT) != 0) + ((pressed & BTN_DUP) != 0) != 1) {
+        return;
+    }
+    if (pressed & BTN_DLEFT) {
+        type = EQUIP_TYPE_SWORD;
+    } else if (pressed & BTN_DDOWN) {
+        type = EQUIP_TYPE_BOOTS;
+    } else if (pressed & BTN_DRIGHT) {
+        type = EQUIP_TYPE_SHIELD;
+    } else if ((pressed & BTN_DUP) && !CVarGetInteger(CVAR_ENHANCEMENT("CUpEquip"), 0)) {
+        type = EQUIP_TYPE_TUNIC;
+    } else {
+        return;
+    }
+
+    /* Never interrupt a sword attack, weapon change, or held-item animation. */
+    if ((type == EQUIP_TYPE_SWORD) &&
+        (this->heldItemAction != PLAYER_IA_NONE ||
+         (this->upperActionFunc == Player_UpperAction_ChangeHeldItem) ||
+         (this->meleeWeaponState != 0) ||
+         (this->linearVelocity != 0.0f) || (Player_CheckForIdleAnim(this) == IDLE_ANIM_NONE))) {
+        return;
+    }
+
+    current = CUR_EQUIP_VALUE(type);
+    swordlessAllowed = CVarGetInteger(CVAR_ENHANCEMENT("EquipmentCanBeRemoved"), 0) &&
+        ((CVarGetInteger(CVAR_ENHANCEMENT("SwordToggle"), SWORD_TOGGLE_NONE) == SWORD_TOGGLE_BOTH_AGES) ||
+         ((CVarGetInteger(CVAR_ENHANCEMENT("SwordToggle"), SWORD_TOGGLE_NONE) == SWORD_TOGGLE_CHILD) &&
+          LINK_IS_CHILD));
+
+    /* Iterate forward with wrap, skipping missing and age-ineligible equipment. */
+    for (s16 step = 1; step <= 4; step++) {
+        candidate = (current + step) % 4;
+        if (candidate == 0) {
+            if ((type == EQUIP_TYPE_SHIELD && CVarGetInteger(CVAR_ENHANCEMENT("EquipmentCanBeRemoved"), 0)) ||
+                (type == EQUIP_TYPE_SWORD && swordlessAllowed)) {
+                next = 0;
+                break;
+            }
+            continue;
+        }
+        if ((type == EQUIP_TYPE_SWORD && candidate == EQUIP_VALUE_SWORD_BIGGORON &&
+             !CHECK_OWNED_EQUIP(type, candidate - 1) &&
+             !CHECK_OWNED_EQUIP_ALT(EQUIP_TYPE_SWORD, EQUIP_INV_SWORD_BROKENGIANTKNIFE))) {
+            continue;
+        }
+        if ((CHECK_OWNED_EQUIP(type, candidate - 1) ||
+             (type == EQUIP_TYPE_SWORD && candidate == EQUIP_VALUE_SWORD_BIGGORON &&
+              CHECK_OWNED_EQUIP_ALT(EQUIP_TYPE_SWORD, EQUIP_INV_SWORD_BROKENGIANTKNIFE))) &&
+            CHECK_AGE_REQ_EQUIP(type, candidate)) {
+            next = candidate;
+            break;
+        }
+    }
+    if ((next < 0) || (next == current)) {
+        return;
+    }
+
+    Inventory_ChangeEquipment(type, next);
+    if (type == EQUIP_TYPE_SWORD) {
+        if (next == EQUIP_VALUE_SWORD_NONE) {
+            gSaveContext.equips.buttonItems[0] = ITEM_NONE;
+            Flags_SetInfTable(INFTABLE_SWORDLESS);
+        } else {
+            gSaveContext.equips.buttonItems[0] = ITEM_SWORD_KOKIRI + next - 1;
+            if (next == EQUIP_VALUE_SWORD_BIGGORON) {
+                if (gSaveContext.bgsFlag != 0) {
+                    gSaveContext.equips.buttonItems[0] = ITEM_SWORD_BGS;
+                    gSaveContext.swordHealth = 8;
+                } else if (CHECK_OWNED_EQUIP_ALT(EQUIP_TYPE_SWORD, EQUIP_INV_SWORD_BROKENGIANTKNIFE)) {
+                    gSaveContext.equips.buttonItems[0] = ITEM_SWORD_KNIFE;
+                }
+            }
+            Flags_UnsetInfTable(INFTABLE_SWORDLESS);
+        }
+        Interface_LoadItemIcon1(play, 0);
+    }
+    Player_SetEquipmentData(play, this);
+    func_808328EC(this, (type == EQUIP_TYPE_BOOTS && next == EQUIP_VALUE_BOOTS_IRON)
+                              ? NA_SE_PL_WALK_HEAVYBOOTS : NA_SE_PL_CHANGE_ARMS);
+}
+
 void Player_UpdateItems(Player* this, PlayState* play) {
     if ((this->actor.category == ACTORCAT_PLAYER) &&
         GameInteractor_Should(VB_ALLOW_QUICK_PUTAWAY, !(this->stateFlags1 & PLAYER_STATE1_START_CHANGING_HELD_ITEM)) &&
@@ -2652,6 +2773,7 @@ void Player_UpdateItems(Player* this, PlayState* play) {
         (play->shootingGalleryStatus == 0) && (play->activeCamera == CAM_ID_MAIN) &&
         (play->transitionTrigger != TRANS_TRIGGER_START) && (gSaveContext.timerState != TIMER_STATE_STOP)) {
         Player_ProcessItemButtons(this, play);
+        Player_CycleEquipmentWithDpad(this, play);
     }
 
     if (this->stateFlags1 & PLAYER_STATE1_START_CHANGING_HELD_ITEM) {
@@ -12807,7 +12929,55 @@ s16 func_8084ABD8(PlayState* play, Player* this, s32 arg2, s16 arg3) {
     return func_80836AB8(this, (play->shootingGalleryStatus != 0) || func_8002DD78(this) || func_808334B4(this)) - arg3;
 }
 
-void func_8084AEEC(Player* this, f32* arg1, f32 arg2, s16 arg3) {
+// Mo's Custom: B-stroke swim boost is applied only by func_8084D530.
+// The generic swim-speed function retains vanilla behavior for diving and other actions.
+static f32 sMoSwimStrokeBonus = 0.0f;
+static Player* sMoSwimStrokePlayer = NULL;
+static u32 sMoSwimStrokeFrames[8] = { 0 };
+static s32 sMoSwimStrokeCount = 0;
+static u32 sMoSwimLastPressFrame = 0;
+
+static void Mo_UpdateSwimStrokeBonus(PlayState* play, Player* this, Input* input) {
+    u32 frame = play->gameplayFrames;
+    s32 i;
+    s32 recentPresses = 0;
+    f32 target = 0.0f;
+
+    if (!CVarGetInteger(CVAR_ENHANCEMENT("FasterSwimBoosting"), 0) || input == NULL ||
+        this->currentBoots == PLAYER_BOOTS_IRON) {
+        sMoSwimStrokeBonus = 0.0f;
+        sMoSwimStrokeCount = 0;
+        sMoSwimStrokePlayer = this;
+        return;
+    }
+    if (sMoSwimStrokePlayer != this || (sMoSwimStrokeCount > 0 &&
+        (frame < sMoSwimLastPressFrame || frame - sMoSwimLastPressFrame > 20))) {
+        sMoSwimStrokeCount = 0;
+        sMoSwimStrokeBonus = 0.0f;
+        sMoSwimStrokePlayer = this;
+    }
+    if (CHECK_BTN_ANY(input->press.button, BTN_B)) {
+        sMoSwimStrokeFrames[sMoSwimStrokeCount % 8] = frame;
+        sMoSwimStrokeCount++;
+        sMoSwimLastPressFrame = frame;
+    }
+    // OoT's 20 Hz gameplay update: 4 presses in 20 frames = 4 presses/second.
+    for (i = 0; i < sMoSwimStrokeCount && i < 8; i++) {
+        u32 pressFrame = sMoSwimStrokeFrames[i];
+        if (frame >= pressFrame && frame - pressFrame < 20) {
+            recentPresses++;
+        }
+    }
+    // Four presses starts the transition; six presses reaches the full extra boost.
+    if (recentPresses >= 4) {
+        f32 t = (recentPresses - 3.0f) / 3.0f;
+        if (t > 1.0f) t = 1.0f;
+        target = 0.25f * t * t * (3.0f - 2.0f * t);
+    }
+    Math_StepToF(&sMoSwimStrokeBonus, target, 0.08f);
+}
+
+static void Mo_CalculateSwimMovement(Player* this, f32* arg1, f32 arg2, s16 arg3, f32 strokeBonus) {
     f32 temp1;
     f32 temp2;
 
@@ -12815,6 +12985,7 @@ void func_8084AEEC(Player* this, f32* arg1, f32 arg2, s16 arg3) {
 
     temp2 = (R_RUN_SPEED_LIMIT / 100.0f) * 0.8f;
     GameInteractor_Should(VB_PLAYER_MODIFY_SWIM_SPEED, true, this, &temp2, sControlInput != NULL);
+    temp2 *= 1.0f + strokeBonus;
     if (*arg1 > temp2) {
         *arg1 = temp2;
     }
@@ -12827,8 +12998,13 @@ void func_8084AEEC(Player* this, f32* arg1, f32 arg2, s16 arg3) {
     }
 
     GameInteractor_Should(VB_PLAYER_MODIFY_SWIM_SPEED, true, this, &arg2, sControlInput != NULL);
+    arg2 *= 1.0f + strokeBonus;
     Math_AsymStepToF(arg1, arg2 * 0.8f, temp1, (fabsf(*arg1) * 0.02f) + 0.05f);
     Math_ScaledStepToS(&this->yaw, arg3, 1600);
+}
+
+void func_8084AEEC(Player* this, f32* arg1, f32 arg2, s16 arg3) {
+    Mo_CalculateSwimMovement(this, arg1, arg2, arg3, 0.0f);
 }
 
 // #region SOH [Enhancement]
@@ -12908,6 +13084,7 @@ void func_8084B000(Player* this) {
 
 void func_8084B158(PlayState* play, Player* this, Input* input, f32 arg3) {
     f32 temp;
+    Mo_UpdateSwimStrokeBonus(play, this, input);
 
     if ((input != NULL) && CHECK_BTN_ANY(input->press.button, BTN_A | BTN_B)) {
         temp = 1.0f;
@@ -13323,6 +13500,7 @@ void Player_Action_8084BF1C(Player* this, PlayState* play) {
     }
 
     this->skelAnime.playSpeed = phi_f2 * phi_f0 + phi_f2 * CVarGetInteger(CVAR_ENHANCEMENT("ClimbSpeed"), 0);
+    this->skelAnime.playSpeed *= Ship_GetSpeedModifierFactor(true);
 
     if (this->av2.actionVar2 >= 0) {
         if ((this->actor.wallPoly != NULL) && (this->actor.wallBgId != BGCHECK_SCENE)) {
@@ -13502,6 +13680,12 @@ void Player_Action_8084C760(Player* this, PlayState* play) {
             if (!Player_TryLeavingCrawlspace(this, play)) {
                 if (GameInteractor_Should(VB_CRAWL_SPEED_INCREASE, true)) {
                     this->linearVelocity = sControlInput->rel.stick_y * 0.03f;
+                }
+                // Match CrawlSpeed's safeguard while the Spirit Temple MQ boulder is present.
+                if (!(play->sceneNum == SCENE_SPIRIT_TEMPLE && this->actor.world.pos.z < -545.0f &&
+                      this->actor.world.pos.z > -630.0f && ResourceMgr_IsGameMasterQuest() &&
+                      !Flags_GetSwitch(play, 5))) {
+                    this->linearVelocity *= Ship_GetSpeedModifierFactor(true);
                 }
             }
         }
@@ -13885,7 +14069,8 @@ static AnimSfxEntry D_808549D0[] = {
 };
 
 void func_8084D530(Player* this, f32* arg1, f32 arg2, s16 arg3) {
-    func_8084AEEC(this, arg1, arg2, arg3);
+    Mo_CalculateSwimMovement(this, arg1, arg2, arg3,
+        CVarGetInteger(CVAR_ENHANCEMENT("FasterSwimBoosting"), 0) ? sMoSwimStrokeBonus : 0.0f);
     Player_ProcessAnimSfxList(this, D_808549D0);
 }
 

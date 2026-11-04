@@ -1,3 +1,4 @@
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_en_fr.h"
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 #include "vt.h"
@@ -947,6 +948,19 @@ void EnFr_TalkBeforeReward(EnFr* this, PlayState* play) {
     }
 }
 
+static u16 EnFr_LocalPrizeCheck(const EnFr* this) {
+    switch (this->songIndex) {
+        case FROG_ZL: return RC_ZR_FROGS_ZELDAS_LULLABY;
+        case FROG_EPONA: return RC_ZR_FROGS_EPONAS_SONG;
+        case FROG_SARIA: return RC_ZR_FROGS_SARIAS_SONG;
+        case FROG_SUNS: return RC_ZR_FROGS_SUNS_SONG;
+        case FROG_SOT: return RC_ZR_FROGS_SONG_OF_TIME;
+        case FROG_STORMS: return RC_ZR_FROGS_IN_THE_RAIN;
+        case FROG_CHOIR_SONG: return RC_ZR_FROGS_OCARINA_GAME;
+        default: return RC_UNKNOWN_CHECK;
+    }
+}
+
 void EnFr_SetReward(EnFr* this, PlayState* play) {
     u16 songIndex;
 
@@ -1027,16 +1041,17 @@ void EnFr_Deactivate(EnFr* this, PlayState* play) {
         this->actionFunc = EnFr_Idle;
     } else {
         this->actionFunc = EnFr_GiveReward;
-        Actor_OfferGetItem(&this->actor, play, this->reward, 30.0f, 100.0f);
+        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, EnFr_LocalPrizeCheck(this), this->reward, 30.0f, 100.0f);
     }
 }
 
 void EnFr_GiveReward(EnFr* this, PlayState* play) {
     if (Actor_HasParent(&this->actor, play)) {
+        LocalWorldShuffle_AcceptNpcPrize(&this->actor, play, EnFr_LocalPrizeCheck(this));
         this->actor.parent = NULL;
         this->actionFunc = EnFr_SetIdle;
     } else {
-        Actor_OfferGetItem(&this->actor, play, this->reward, 30.0f, 100.0f);
+        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, EnFr_LocalPrizeCheck(this), this->reward, 30.0f, 100.0f);
     }
 }
 

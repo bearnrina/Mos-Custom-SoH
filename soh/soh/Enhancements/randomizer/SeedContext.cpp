@@ -650,3 +650,4 @@ void Context::SetSeed(const uint32_t seed) {
 
 // Compiled here so adding the mode needs no new CMake source entry.
 #include "LocalDungeonShuffle.inc"
+#include "LocalWorldShuffle.inc"

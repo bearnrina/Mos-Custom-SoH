@@ -1,4 +1,5 @@
 #include "global.h"
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "overlays/effects/ovl_Effect_Ss_Dead_Sound/z_eff_ss_dead_sound.h"
@@ -357,7 +358,9 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
 
     this->actor.params &= 0xFF;
 
-    if (GameInteractor_Should(VB_ITEM00_DESPAWN, Flags_GetCollectible(play, this->collectibleFlag), this)) {
+    s32 worldCheck = LocalWorldShuffle_HasCheck(&this->actor, play, this->ogParams);
+    if (worldCheck ? LocalWorldShuffle_IsCollected(&this->actor, play, this->ogParams) :
+        GameInteractor_Should(VB_ITEM00_DESPAWN, Flags_GetCollectible(play, this->collectibleFlag), this)) {
         Actor_Kill(&this->actor);
         return;
     }
@@ -489,7 +492,7 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
     this->actor.focus.pos = this->actor.world.pos;
     this->getItemId = GI_NONE;
 
-    if (!spawnParam8000) {
+    if (!spawnParam8000 || worldCheck) {
         EnItem00_SetupAction(this, func_8001DFC8);
         this->unk_15A = -1;
         return;
@@ -502,6 +505,9 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
     this->actor.velocity.y = 0.0f;
     this->actor.gravity = 0.0f;
 
+    if (LocalWorldShuffle_OfferPickup(&this->actor, play, this->ogParams)) {
+        return;
+    }
     if (!GameInteractor_Should(VB_GIVE_ITEM_FROM_ITEM_00, true, this)) {
         return;
     }
@@ -850,6 +856,9 @@ void EnItem00_Update(Actor* thisx, PlayState* play) {
         return;
     }
 
+    if (LocalWorldShuffle_OfferPickup(&this->actor, play, this->ogParams)) {
+        return;
+    }
     if (!GameInteractor_Should(VB_GIVE_ITEM_FROM_ITEM_00, true, this)) {
         return;
     }
@@ -989,6 +998,11 @@ void EnItem00_Draw(Actor* thisx, PlayState* play) {
     EnItem00* this = (EnItem00*)thisx;
     f32 mtxScale;
 
+    if (LocalWorldShuffle_HasCheck(&this->actor, play, this->ogParams)) {
+        Matrix_Scale(25.0f, 25.0f, 25.0f, MTXMODE_APPLY);
+        LocalWorldShuffle_DrawPickup(&this->actor, play, this->ogParams);
+        return;
+    }
     // Setup Hilites for 3D drops
     if (CVarGetInteger(CVAR_ENHANCEMENT("NewDrops"), 0)) {
         func_8002EBCC(&this->actor, play, 0);

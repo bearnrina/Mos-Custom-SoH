@@ -4,6 +4,7 @@
  * Description: Fishing Pond Elements (Owner, Fish, Props, Effects...)
  */
 
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_fishing.h"
 #include "soh/Enhancements/randomizer/FishingPoleShop.h"
 
@@ -845,6 +846,8 @@ void Fishing_Init(Actor* thisx, PlayState* play2) {
     u16 fishCount;
     s16 i;
 
+    this->localWorldPrizeId = GI_NONE;
+    this->localWorldPrizeCheck = RC_UNKNOWN_CHECK;
     Actor_ProcessInitChain(thisx, sInitChain);
     ActorShape_Init(&thisx->shape, 0.0f, NULL, 0.0f);
 
@@ -5062,7 +5065,7 @@ void Fishing_HandleOwnerDialog(Fishing* this, PlayState* play) {
                         // if we should give the main prize AND it's not rando
                         if (GameInteractor_Should(VB_SHOULD_GIVE_VANILLA_FISHING_PRIZE,
                                                   (sFishingRecordLength >= 50.0f) &&
-                                                      !(HIGH_SCORE(HS_FISHING) & HS_FISH_PRIZE_CHILD),
+                                                      !LocalWorldShuffle_NpcCollected(RC_LH_CHILD_FISHING, (HIGH_SCORE(HS_FISHING) & HS_FISH_PRIZE_CHILD) != 0),
                                                   &fishData)) {
                             HIGH_SCORE(HS_FISHING) |= HS_FISH_PRIZE_CHILD;
                             getItemId = GI_HEART_PIECE;
@@ -5072,7 +5075,7 @@ void Fishing_HandleOwnerDialog(Fishing* this, PlayState* play) {
                         // if we should give the main prize AND it's not rando
                         if (GameInteractor_Should(VB_SHOULD_GIVE_VANILLA_FISHING_PRIZE,
                                                   (sFishingRecordLength >= 60.0f) &&
-                                                      !(HIGH_SCORE(HS_FISHING) & HS_FISH_PRIZE_ADULT),
+                                                      !LocalWorldShuffle_NpcCollected(RC_LH_ADULT_FISHING, (HIGH_SCORE(HS_FISHING) & HS_FISH_PRIZE_ADULT) != 0),
                                                   &fishData)) {
                             HIGH_SCORE(HS_FISHING) |= HS_FISH_PRIZE_ADULT;
                             getItemId = GI_SCALE_GOLDEN;
@@ -5088,7 +5091,15 @@ void Fishing_HandleOwnerDialog(Fishing* this, PlayState* play) {
 
                 // if we should give the check in rando
                 if (!GameInteractor_Should(VB_GIVE_RANDO_FISHING_PRIZE, false, &fishData)) {
-                    Actor_OfferGetItem(&this->actor, play, getItemId, 2000.0f, 1000.0f);
+                    if (LocalWorldShuffle_NpcEnabled()) {
+                        this->localWorldPrizeId = getItemId;
+                        this->localWorldPrizeCheck = getItemId == GI_HEART_PIECE ? RC_LH_CHILD_FISHING :
+                            getItemId == GI_SCALE_GOLDEN ? RC_LH_ADULT_FISHING : RC_UNKNOWN_CHECK;
+                        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, this->localWorldPrizeCheck,
+                            this->localWorldPrizeId, 2000.0f, 1000.0f);
+                    } else {
+                        Actor_OfferGetItem(&this->actor, play, getItemId, 2000.0f, 1000.0f);
+                    }
                     this->stateAndTimer = 23;
                 }
             }
@@ -5138,10 +5149,18 @@ void Fishing_HandleOwnerDialog(Fishing* this, PlayState* play) {
         case 23:
             sIsRodVisible = false;
             if (Actor_HasParent(&this->actor, play)) {
+                if (LocalWorldShuffle_NpcEnabled()) {
+                    LocalWorldShuffle_AcceptNpcPrize(&this->actor, play, this->localWorldPrizeCheck);
+                }
                 this->stateAndTimer = 24;
             } else {
                 if (!GameInteractor_Should(VB_GIVE_RANDO_GLITCH_FISHING_PRIZE, false, this)) {
-                    Actor_OfferGetItem(&this->actor, play, GI_SCALE_GOLDEN, 2000.0f, 1000.0f);
+                    if (LocalWorldShuffle_NpcEnabled()) {
+                        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, this->localWorldPrizeCheck,
+                            this->localWorldPrizeId, 2000.0f, 1000.0f);
+                    } else {
+                        Actor_OfferGetItem(&this->actor, play, GI_SCALE_GOLDEN, 2000.0f, 1000.0f);
+                    }
                 }
             }
             break;

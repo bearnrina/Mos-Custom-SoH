@@ -461,6 +461,3 @@ soh/properties.h
 /clang-format
 /clang-format.exe
 *.o2r
-
-# Local development backups
-*.bak

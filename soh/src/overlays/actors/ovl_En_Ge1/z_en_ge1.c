@@ -4,6 +4,7 @@
  * Description: White-clothed Gerudo
  */
 
+#include "soh/Enhancements/randomizer/LocalWorldShuffle.h"
 #include "z_en_ge1.h"
 #include "vt.h"
 #include "objects/object_ge1/object_ge1.h"
@@ -503,11 +504,13 @@ void EnGe1_SetupWait_Archery(EnGe1* this, PlayState* play) {
 void EnGe1_WaitTillItemGiven_Archery(EnGe1* this, PlayState* play) {
     GetItemEntry getItemEntry = (GetItemEntry)GET_ITEM_NONE;
     s32 getItemId;
+    if (LocalWorldShuffle_NpcEnabled()) getItemId = GI_QUIVER_50;
 
     if (!GameInteractor_Should(VB_GIVE_ITEM_FROM_HORSEBACK_ARCHERY, true, this)) {
         return;
     }
     if (Actor_HasParent(&this->actor, play)) {
+        LocalWorldShuffle_AcceptNpcPrize(&this->actor, play, (this->stateFlags & GE1_STATE_GIVE_QUIVER) ? RC_GF_HBA_1500_POINTS : RC_GF_HBA_1000_POINTS);
         if (GameInteractor_Should(VB_END_HORSEBACK_ARCHERY, true, this)) {
             this->actionFunc = EnGe1_SetupWait_Archery;
         }
@@ -531,13 +534,14 @@ void EnGe1_WaitTillItemGiven_Archery(EnGe1* this, PlayState* play) {
         } else {
             getItemId = GI_HEART_PIECE;
         }
-        Actor_OfferGetItem(&this->actor, play, getItemId, 10000.0f, 50.0f);
+        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, (this->stateFlags & GE1_STATE_GIVE_QUIVER) ? RC_GF_HBA_1500_POINTS : RC_GF_HBA_1000_POINTS, getItemId, 10000.0f, 50.0f);
     }
 }
 
 void EnGe1_BeginGiveItem_Archery(EnGe1* this, PlayState* play) {
     GetItemEntry getItemEntry = (GetItemEntry)GET_ITEM_NONE;
     s32 getItemId;
+    if (LocalWorldShuffle_NpcEnabled()) getItemId = GI_QUIVER_50;
 
     if (Actor_TextboxIsClosing(&this->actor, play)) {
         this->actor.flags &= ~ACTOR_FLAG_TALK_OFFER_AUTO_ACCEPTED;
@@ -562,7 +566,7 @@ void EnGe1_BeginGiveItem_Archery(EnGe1* this, PlayState* play) {
     }
 
     if (GameInteractor_Should(VB_GIVE_ITEM_FROM_HORSEBACK_ARCHERY, true, this)) {
-        Actor_OfferGetItem(&this->actor, play, getItemId, 10000.0f, 50.0f);
+        LocalWorldShuffle_OfferNpcPrize(&this->actor, play, (this->stateFlags & GE1_STATE_GIVE_QUIVER) ? RC_GF_HBA_1500_POINTS : RC_GF_HBA_1000_POINTS, getItemId, 10000.0f, 50.0f);
     }
 }
 
@@ -658,14 +662,14 @@ void EnGe1_TalkAfterGame_Archery(EnGe1* this, PlayState* play) {
     if (gSaveContext.minigameScore < 1000) {
         this->actor.textId = 0x6045;
         this->actionFunc = EnGe1_TalkNoPrize_Archery;
-    } else if (!Flags_GetInfTable(INFTABLE_190)) {
+    } else if (!LocalWorldShuffle_NpcCollected(RC_GF_HBA_1000_POINTS, Flags_GetInfTable(INFTABLE_190))) {
         this->actor.textId = 0x6046;
         this->actionFunc = EnGe1_TalkWinPrize_Archery;
         this->stateFlags &= ~GE1_STATE_GIVE_QUIVER;
     } else if (gSaveContext.minigameScore < 1500) {
         this->actor.textId = 0x6047;
         this->actionFunc = EnGe1_TalkNoPrize_Archery;
-    } else if (Flags_GetItemGetInf(ITEMGETINF_0F)) {
+    } else if (LocalWorldShuffle_NpcCollected(RC_GF_HBA_1500_POINTS, Flags_GetItemGetInf(ITEMGETINF_0F))) {
         this->actor.textId = 0x6047;
         this->actionFunc = EnGe1_TalkNoPrize_Archery;
     } else {
@@ -691,7 +695,7 @@ void EnGe1_Wait_Archery(EnGe1* this, PlayState* play) {
         EnGe1_SetTalkAction(this, play, 0x603F, 100.0f, EnGe1_TalkNoHorse_Archery);
     } else {
         if (Flags_GetEventChkInf(EVENTCHKINF_PLAYED_HORSEBACK_ARCHERY)) {
-            if (Flags_GetInfTable(INFTABLE_190)) {
+            if (LocalWorldShuffle_NpcCollected(RC_GF_HBA_1000_POINTS, Flags_GetInfTable(INFTABLE_190))) {
                 textId = 0x6042;
             } else {
                 textId = 0x6043;

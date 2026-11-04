@@ -315,6 +315,38 @@ typedef struct {
     LocalDungeonShuffleChest chests[LOCAL_DUNGEON_SHUFFLE_MAX_CHESTS];
 } LocalDungeonShuffleSaveData;
 
+// Independent from Randomizer seed state; check and item IDs are validated on load.
+#define LOCAL_WORLD_SHUFFLE_VERSION 4
+#define LOCAL_WORLD_NPC_REPEAT_PRIZE_COUNT 7
+#define LOCAL_WORLD_SHUFFLE_MAX_CHECKS 1024
+#define LOCAL_WORLD_SHUFFLE_OFF 0
+#define LOCAL_WORLD_SHUFFLE_READY 1
+#define LOCAL_WORLD_SHUFFLE_FAILED 2
+#define LOCAL_WORLD_RATING_UNKNOWN 0
+#define LOCAL_WORLD_RATING_STANDARD 1
+#define LOCAL_WORLD_RATING_TRICKY 2
+#define LOCAL_WORLD_RATING_GLITCHES 3
+#define LOCAL_WORLD_RATING_UNVERIFIED 4
+typedef struct {
+    u16 check;
+    u16 item;
+    u8 collected;
+    u8 childAccessible;
+    u8 adultAccessible;
+} LocalWorldShufflePlacement;
+typedef struct {
+    u8 state;
+    u8 masterQuest;
+    u8 forestSwordQuest;
+    u8 startingHearts;
+    u32 seed;
+    u16 placementCount;
+    u8 npcPrizesEnabled; // Version 3 files retain their original NPC behavior.
+    u8 seedRating; // Optional version 4 field; older files have an unknown rating.
+    u16 npcRepeatPrizes[LOCAL_WORLD_NPC_REPEAT_PRIZE_COUNT]; // Native GI IDs; infinitely repeatable.
+    LocalWorldShufflePlacement placements[LOCAL_WORLD_SHUFFLE_MAX_CHECKS];
+} LocalWorldShuffleSaveData;
+
 typedef struct ShipSaveContextData {
     u16 pendingSale;
     u16 pendingSaleMod;
@@ -329,6 +361,8 @@ typedef struct ShipSaveContextData {
     u8 resetToSpawn;
     BankHyliaSaveData bankHylia;
     LocalDungeonShuffleSaveData localDungeonShuffle;
+    LocalWorldShuffleSaveData localWorldShuffle;
+    u8 expandedNaviNextHint;
 } ShipSaveContextData;
 
 #pragma endregion
@@ -454,8 +488,10 @@ typedef enum {
     /* 01 */ QUEST_MASTER,
     /* 02 */ QUEST_RANDOMIZER,
     /* 03 */ QUEST_BOSSRUSH,
+    /* 04 */ QUEST_LOCAL_WORLD_SHUFFLE,
 } Quest;
 
+#define IS_LOCAL_WORLD_SHUFFLE (gSaveContext.ship.quest.id == QUEST_LOCAL_WORLD_SHUFFLE)
 #define IS_VANILLA (gSaveContext.ship.quest.id == QUEST_NORMAL)
 #define IS_MASTER_QUEST (gSaveContext.ship.quest.id == QUEST_MASTER)
 #define IS_RANDO (gSaveContext.ship.quest.id == QUEST_RANDOMIZER)
