@@ -8,15 +8,19 @@ Mo's custom release is **v1.1**. The underlying engine retains its upstream **9.
 
 ## Links
 
+These optional texture packs and assets are not bundled and require separate download. They are not required to play the build. Download and place them in the mods folder if used.
+
 - [Ship of Harkinian](https://www.shipofharkinian.com)
 - [Upstream Shipwright source](https://github.com/HarbourMasters/Shipwright)
 - [libultraship](https://github.com/Kenix3/libultraship/)
 - [ROM compatibility checker](https://ship.equipment/)
 - [Supported ROM hashes](https://github.com/HarbourMasters/Shipwright/blob/develop/docs/supportedHashes.json)
-- [OoT Reloaded — downloads and installation instructions](https://evilgames.eu/texture-packs/oot-reloaded.htm), by GhostlyDark. Choose the Ship of Harkinian version. This optional texture pack is not bundled.
+- [OoT Reloaded — downloads and installation instructions](https://evilgames.eu/texture-packs/oot-reloaded.htm)
 - [HD Roc's Feather](https://gamebanana.com/mods/662992)
 - [MM Jump Flips](https://gamebanana.com/mods/688588)
 - [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571)
+- [Alternate Skies] (https://gamebanana.com/mods/579269)
+- [Alternate Rupees] (https://gamebanana.com/mods/694120)
 
 ## Features
 
