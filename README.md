@@ -17,10 +17,10 @@ These optional texture packs and assets are not bundled and require separate dow
 - [Supported ROM hashes](https://github.com/HarbourMasters/Shipwright/blob/develop/docs/supportedHashes.json)
 - [OoT Reloaded — downloads and installation instructions](https://evilgames.eu/texture-packs/oot-reloaded.htm)
 - [HD Roc's Feather](https://gamebanana.com/mods/662992)
-- [MM Jump Flips](https://gamebanana.com/mods/688588)
-- [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571)
-- [Alternate Skies] (https://gamebanana.com/mods/579269)
-- [Alternate Rupees] (https://gamebanana.com/mods/694120)
+- [HD Navi Icon (OoT)](https://gamebanana.com/mods/614571)
+- [Alternate Skies](https://gamebanana.com/mods/579269)
+- [Alternate Rupees](https://gamebanana.com/mods/694120)
+- [MM Jump Flip Animation](https://gamebanana.com/mods/688588)
 
 ## Features
 
@@ -170,10 +170,10 @@ The current Release executable has compiled successfully and has been gameplay-t
 - **libultraship contributors:** Supporting platform library.
 - **Ocarina of Time decompilation contributors:** Foundational reverse-engineering work.
 - **GhostlyDark and OoT Reloaded contributors:** Optional texture pack.
-- **CGWolf95:** [HD Roc's Feather](https://gamebanana.com/mods/662992) and [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571).
-- **Neirn:** Original MM Jumps plugin author; **denoflions:** credited contributor. [MM Jump Flips](https://gamebanana.com/mods/688588) is submitted by **VioLink** as redistributor.
+- **CGWolf95:**  Optional HD textures [HD Roc's Feather](https://gamebanana.com/mods/662992) and [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571).
+- **Neirn:**, **VioLink**  Optional animation;  [MM Jump Flips](https://gamebanana.com/mods/688588)
 
-The three optional GameBanana modifications have author permission for redistribution, but their archives are **not bundled in v1.1**. They remain the work of their original creators. Permission for these assets does not extend to unrelated third-party content, and credits do not imply endorsement.
+The three optional GameBanana modifications are **not bundled in v1.1**. They remain the work of their original creators. 
 
 The Local Item Shuffle subtitle artwork was generated for this project. Its source and generation notes are in `soh/assets/sources/local-item-shuffle` in the source package.
 
@@ -183,47 +183,45 @@ Retain all existing copyright notices, licenses, and attribution documents from 
 
 The following roadmap preserves earlier feature ideas. Completed work is described above; remaining ideas are not promises of inclusion or release dates.
 
-### Remaining gameplay and quality-of-life ideas
+v1.3 Gregforce Quest Integration
+- Integrate Greg the green rupee quest into version 1.2
 
-- Adjustable drop percentages under Enhancements → Difficulty → Drops.
-- Adjustable Hover Boots duration and sliding.
-- Adjustable Iron Boots running and sinking speeds.
-- Faster Magic Bean planting.
-- A clock on the pause menu.
-- An option for void falls to cause instant death.
-- Deku Nut drops from trees.
-- Adjustable Bunny Hood speed.
-- A night-only option for visible guard vision.
-- Further randomized enemy-size refinements, cutscene skips, and menu-text improvements.
+v1.4 Integrate Lesser Features
+- Song of storms waters plants
+- Easy supersliding
+- Easy superslide stearing
+- Super backflip ends slide
 
-### v1.2 and beyond
+v1.5 Drop System & Difficulty Integration
+- Adjustable enemy drop rate/selection
+- Adjustable grass/pot/etc drop rate/selection
+- Adjustable enemy detection range
 
-- **Map Mania:** Buyable maps for all 34 regions.
-- **Compassanity:** Stone of Agony functions as a map compass; dungeon compasses are replaced by perishable items.
+v1.6 Map Mania Integration
+- Map Mania- Buyable maps- all 34 regions maps are buyable
+- Compassanity- Stone of agony functions as map compass (all in-game compasses are replaced by perishable items)
+
+v1.7 Shuffle Mode Integration
+- Add enemies to shuffle mode
+- Add global options to shuffle mode
+
+v1.8 Integrate Cutscenes & Restores
+- Restore lake hylia and zoras domain after water temple 
+- Desaturate lost woods and restore it when optional 3rd party assets are installed
 - Skippable cutscenes
-- Adjustable enemy drop rates, drop selection, and detection range.
-- Adjustable grass, pot, and other environmental drop rates and selections.
-- More hint options adapted from Randomizer.
-- Change Jabu-Jabu's exterior hit sound from stone to flesh.
-- A universal day/night cycle.
-- Fish anywhere
-- Hylian Loach hunt
-- Restore Lake Hylia and Zora's Domain after the Water Temple.
-- Guards patrol the Hyrule Castle field.
-- **Slot Skins:** Switch between alternate assets for items, weapons, and equipment from the pause menu.
-- Expanded Happy Mask quest- add quest for other 4 masks
-- Expanded Spiritual Stone stealth sequence- a unique castle stealth sequence for each stone
 
-### Additional shuffle modes
+v1.9 Integrate Slot Skins
+- Slot Skins- toggle between multiple alternate asset items, weapons & equipment in start menu
 
-The current Local Item Shuffle mode is described above. These are separate future ideas:
+v2.0 Side Quest
+- Hylian loach hunt- add 5 loaches around Hyrule catchable in bottles
 
-- Add enemies to Local Shuffle Mode
-- Integrate Global Shuffle Mode with item & enemy shuffle
+v2.1 Side Quest
+- Expanded happy mask quest- add quest for other 4 masks
 
-### Glitches and speedrunning techniques
-
-Optional assists for bomb sliding, supersliding, megaflips, bomb hovering, infinite sword glitch (ISG), seam walking, Door of Time skip, and gainers.
+v2.2 Advanced Features
+- Extend gaurd vision to castle field and add night only option
+- Gaurds patrol hyrule castle field
 
 ## Disclaimer
 
