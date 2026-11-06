@@ -169,9 +169,9 @@ The current Release executable has compiled successfully and has been gameplay-t
 - **Harbour Masters and Ship of Harkinian contributors:** Original PC port and associated systems.
 - **libultraship contributors:** Supporting platform library.
 - **Ocarina of Time decompilation contributors:** Foundational reverse-engineering work.
-- **GhostlyDark and OoT Reloaded contributors:** Optional texture pack.
+- **GhostlyDark and OoT Reloaded contributors:** Optional texture pack. [OoT Reloaded](https://evilgames.eu/texture-packs/oot-reloaded.htm) 
 - **CGWolf95:**  Optional HD textures [HD Roc's Feather](https://gamebanana.com/mods/662992) and [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571).
-- **Neirn:**, **VioLink**  Optional animation;  [MM Jump Flips](https://gamebanana.com/mods/688588)
+- **Neirn**, **VioLink:**  Optional animation [MM Jump Flips](https://gamebanana.com/mods/688588)
 
 The three optional GameBanana modifications are **not bundled in v1.1**. They remain the work of their original creators. 
 
