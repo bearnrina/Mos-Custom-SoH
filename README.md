@@ -8,7 +8,7 @@ Mo's custom release is **v1.1**. The underlying engine retains its upstream **9.
 
 ## Links
 
-The Harbour Masters team
+Here are the Shipwright source files and supporting resources.
 
 - [Ship of Harkinian](https://www.shipofharkinian.com)
 - [Upstream Shipwright source](https://github.com/HarbourMasters/Shipwright)
@@ -176,7 +176,7 @@ The current Release executable has compiled successfully and has been gameplay-t
 - **CGWolf95:**  Optional HD textures [HD Roc's Feather](https://gamebanana.com/mods/662992) and [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571).
 - **evanlynx:** Optional HD textures [Alternate Skies](https://gamebanana.com/mods/579269)
 - **Mag0riA:** Optional HD textures [Alternate Rupees](https://gamebanana.com/mods/694120)
-- - **Neirn**, **VioLink:**  Optional animation [MM Jump Flips](https://gamebanana.com/mods/688588)
+- **Neirn**, **VioLink:**  Optional animation [MM Jump Flips](https://gamebanana.com/mods/688588)
 
 The six optional GameBanana modifications are **not bundled in v1.1**. They remain the work of their original creators. 
 
