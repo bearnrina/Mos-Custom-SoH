@@ -8,13 +8,16 @@ Mo's custom release is **v1.1**. The underlying engine retains its upstream **9.
 
 ## Links
 
-These optional texture packs and assets are not bundled and require separate download. They are not required to play the build. Download and place them in the mods folder if used.
+The Harbour Masters team
 
 - [Ship of Harkinian](https://www.shipofharkinian.com)
 - [Upstream Shipwright source](https://github.com/HarbourMasters/Shipwright)
 - [libultraship](https://github.com/Kenix3/libultraship/)
 - [ROM compatibility checker](https://ship.equipment/)
 - [Supported ROM hashes](https://github.com/HarbourMasters/Shipwright/blob/develop/docs/supportedHashes.json)
+
+These optional texture packs and assets are not bundled and require separate download. They are not required to play the build. Download and place them in the mods folder if used.
+
 - [OoT Reloaded — downloads and installation instructions](https://evilgames.eu/texture-packs/oot-reloaded.htm)
 - [HD Roc's Feather](https://gamebanana.com/mods/662992)
 - [HD Navi Icon (OoT)](https://gamebanana.com/mods/614571)
@@ -169,11 +172,13 @@ The current Release executable has compiled successfully and has been gameplay-t
 - **Harbour Masters and Ship of Harkinian contributors:** Original PC port and associated systems.
 - **libultraship contributors:** Supporting platform library.
 - **Ocarina of Time decompilation contributors:** Foundational reverse-engineering work.
-- **GhostlyDark and OoT Reloaded contributors:** Optional texture pack. [OoT Reloaded](https://evilgames.eu/texture-packs/oot-reloaded.htm) 
+- **GhostlyDark and OoT Reloaded contributors:** Optional texture pack [OoT Reloaded](https://evilgames.eu/texture-packs/oot-reloaded.htm) 
 - **CGWolf95:**  Optional HD textures [HD Roc's Feather](https://gamebanana.com/mods/662992) and [Fairy Talk Icon (OoT)](https://gamebanana.com/mods/614571).
-- **Neirn**, **VioLink:**  Optional animation [MM Jump Flips](https://gamebanana.com/mods/688588)
+- **evanlynx:** Optional HD textures [Alternate Skies](https://gamebanana.com/mods/579269)
+- **Mag0riA:** Optional HD textures [Alternate Rupees](https://gamebanana.com/mods/694120)
+- - **Neirn**, **VioLink:**  Optional animation [MM Jump Flips](https://gamebanana.com/mods/688588)
 
-The three optional GameBanana modifications are **not bundled in v1.1**. They remain the work of their original creators. 
+The six optional GameBanana modifications are **not bundled in v1.1**. They remain the work of their original creators. 
 
 The Local Item Shuffle subtitle artwork was generated for this project. Its source and generation notes are in `soh/assets/sources/local-item-shuffle` in the source package.
 
